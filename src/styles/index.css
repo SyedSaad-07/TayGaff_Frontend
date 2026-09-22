@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+
+  /* Deep navy — headings, sidebar, primary dark surfaces */
+  --color-ink: #1c2b46;
+  --color-ink-soft: #243552;
+  --color-ink-muted: #334865;
+
+  /* Royal blue — accents, active states, CTAs */
+  --color-brass: #3b5bdb;
+  --color-brass-deep: #2f4ac0;
+  --color-brass-soft: #8da4f2;
+
+  /* Light canvas */
+  --color-slate-canvas: #f3f5f9;
+  --color-slate-line: #d9e0ec;
+  --color-mist: #ffffff;
+
+  --color-muted: #6b7280;
+  --color-success: #2f6b4f;
+  --color-danger: #9b3d3d;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background: var(--color-slate-canvas);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .bg-atelier {
+    background:
+      radial-gradient(ellipse 70% 55% at 50% 0%, rgba(59, 91, 219, 0.08), transparent 55%),
+      radial-gradient(ellipse 50% 40% at 100% 100%, rgba(28, 43, 70, 0.04), transparent 50%),
+      linear-gradient(180deg, #f8f9fc 0%, #f3f5f9 45%, #eef1f7 100%);
+  }
+
+  .bg-login-panel {
+    background:
+      linear-gradient(155deg, #1c2b46 0%, #243552 48%, #2a3f63 100%),
+      url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%233b5bdb' fill-opacity='0.08'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+}
