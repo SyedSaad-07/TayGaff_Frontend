@@ -9,12 +9,14 @@ import { CategoryBreakdownTable } from "@/features/dashboard/CategoryBreakdownTa
 import { useBranch } from "@/features/branches/BranchContext";
 import { ALL_BRANCHES } from "@/features/branches/branchUtils";
 import { toInputDate } from "@/shared/lib/format";
+import { EXPENSE_TYPES } from "@/shared/constants";
 import { ApiError } from "@/shared/api/client";
 
 export function DashboardPage() {
   const { selectedBranchId, selectedBranch, isAllBranches, branches, loading: branchesLoading } =
     useBranch();
   const [period, setPeriod] = useState("monthly");
+  const [expenseType, setExpenseType] = useState("");
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setFullYear(d.getFullYear() - 6);
@@ -43,6 +45,7 @@ export function DashboardPage() {
         startDate: period === "custom" ? startDate : undefined,
         endDate: period === "custom" ? endDate : undefined,
         branchId: selectedBranchId || ALL_BRANCHES,
+        expenseType: expenseType || undefined,
       });
       setStats(data);
     } catch (err) {
@@ -55,6 +58,7 @@ export function DashboardPage() {
     startDate,
     endDate,
     selectedBranchId,
+    expenseType,
     branches.length,
     branchesLoading,
   ]);
@@ -66,20 +70,21 @@ export function DashboardPage() {
   const scopeLabel = isAllBranches
     ? "All branches statistics"
     : selectedBranch?.name || "Selected branch";
+  const typeLabel = expenseType || "All expense types";
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brass-deep">
-            Overview · {scopeLabel}
+            Overview · {scopeLabel} · {typeLabel}
           </p>
           <h1 className="mt-1 font-display text-4xl text-ink sm:text-5xl">
             Expense dashboard
           </h1>
           <p className="mt-2 max-w-xl text-sm text-ink/55">
             Monitor shop spend by day, week, month, year, or any custom window —
-            filtered by the active branch view.
+            filtered by branch and expense type.
           </p>
         </div>
         <Link
@@ -100,14 +105,31 @@ export function DashboardPage() {
         </div>
       ) : null}
 
-      <PeriodFilter
-        period={period}
-        startDate={startDate}
-        endDate={endDate}
-        onPeriodChange={setPeriod}
-        onStartDateChange={setStartDate}
-        onEndDateChange={setEndDate}
-      />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <PeriodFilter
+          period={period}
+          startDate={startDate}
+          endDate={endDate}
+          onPeriodChange={setPeriod}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+        />
+        <label className="text-xs font-medium text-ink/60">
+          Filter by type
+          <select
+            value={expenseType}
+            onChange={(e) => setExpenseType(e.target.value)}
+            className="mt-1 block min-w-[12rem] rounded-xl border border-slate-line bg-mist px-3 py-2 text-sm"
+          >
+            <option value="">All types</option>
+            {EXPENSE_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       {error ? (
         <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p>

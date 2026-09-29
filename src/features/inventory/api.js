@@ -47,4 +47,8 @@ export const inventoryApi = {
   history(id) {
     return api.get(`/inventories/${id}/history`);
   },
+
+  sources(params = {}) {
+    return api.get(`/inventories/sources${toQuery(params)}`);
+  },
 };

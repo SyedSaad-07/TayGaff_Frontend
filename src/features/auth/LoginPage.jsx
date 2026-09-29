@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { getPostLoginPath } from "@/features/auth/roles";
 import { ApiError } from "@/shared/api/client";
@@ -9,6 +10,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("admin@taygaff.com");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -86,13 +88,23 @@ export function LoginPage() {
 
           <label className="mt-4 block text-sm font-medium text-ink/80">
             Password
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-slate-line bg-mist px-4 py-3 outline-none transition focus:border-brass"
-            />
+            <div className="relative mt-2">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-xl border border-slate-line bg-mist px-4 py-3 pr-12 outline-none transition focus:border-brass"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute inset-y-0 right-0 flex items-center px-3.5 text-ink/45 transition hover:text-ink"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </label>
 
           {error ? (

@@ -45,6 +45,7 @@ export const expenseApi = {
         startDate: params.startDate,
         endDate: params.endDate,
         branchId: params.branchId,
+        expenseType: params.expenseType,
       })}`
     );
   },

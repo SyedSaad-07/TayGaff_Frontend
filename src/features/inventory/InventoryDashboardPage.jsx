@@ -111,6 +111,8 @@ export function InventoryDashboardPage() {
   const [searchInput, setSearchInput] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
+  const [sourceOptions, setSourceOptions] = useState([]);
 
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingList, setLoadingList] = useState(true);
@@ -153,6 +155,21 @@ export function InventoryDashboardPage() {
   const scopeLabel = isAllBranches
     ? "All branches statistics"
     : selectedBranch?.name || "Selected branch";
+  const sourceLabel = sourceFilter || "All sources";
+
+  const loadSources = useCallback(async () => {
+    if (branchesLoading) return;
+    try {
+      const data = await inventoryApi.sources({
+        branchId: selectedBranchId || ALL_BRANCHES,
+      });
+      const items = data.items || [];
+      setSourceOptions(items);
+      setSourceFilter((prev) => (prev && !items.includes(prev) ? "" : prev));
+    } catch {
+      setSourceOptions([]);
+    }
+  }, [selectedBranchId, branchesLoading]);
 
   const loadStats = useCallback(async () => {
     if (branchesLoading) return;
@@ -163,6 +180,7 @@ export function InventoryDashboardPage() {
         startDate: period === "custom" ? startDate : undefined,
         endDate: period === "custom" ? endDate : undefined,
         branchId: selectedBranchId || ALL_BRANCHES,
+        sourceName: sourceFilter || undefined,
       });
       setStats(data);
     } catch (err) {
@@ -170,7 +188,14 @@ export function InventoryDashboardPage() {
     } finally {
       setLoadingStats(false);
     }
-  }, [period, startDate, endDate, selectedBranchId, branchesLoading]);
+  }, [
+    period,
+    startDate,
+    endDate,
+    selectedBranchId,
+    sourceFilter,
+    branchesLoading,
+  ]);
 
   const loadList = useCallback(async () => {
     if (branchesLoading) return;
@@ -183,6 +208,7 @@ export function InventoryDashboardPage() {
         status: statusFilter || undefined,
         paymentStatus: paymentFilter || undefined,
         branchId: selectedBranchId || ALL_BRANCHES,
+        sourceName: sourceFilter || undefined,
       });
       setItems(result.items || []);
       setPagination({
@@ -200,14 +226,19 @@ export function InventoryDashboardPage() {
     search,
     statusFilter,
     paymentFilter,
+    sourceFilter,
     selectedBranchId,
     branchesLoading,
   ]);
 
   const refreshAll = useCallback(async () => {
     setError("");
-    await Promise.all([loadStats(), loadList()]);
-  }, [loadStats, loadList]);
+    await Promise.all([loadStats(), loadList(), loadSources()]);
+  }, [loadStats, loadList, loadSources]);
+
+  useEffect(() => {
+    void loadSources();
+  }, [loadSources]);
 
   useEffect(() => {
     void loadStats();
@@ -219,7 +250,7 @@ export function InventoryDashboardPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [selectedBranchId]);
+  }, [selectedBranchId, sourceFilter]);
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -234,6 +265,7 @@ export function InventoryDashboardPage() {
       page: 1,
       limit: 100,
       branchId: selectedBranchId || ALL_BRANCHES,
+      sourceName: sourceFilter || undefined,
     });
     const options = (result.items || []).filter(canSell);
     setSaleOptions(options);
@@ -551,7 +583,9 @@ export function InventoryDashboardPage() {
           </h1>
           <p className="mt-2 max-w-xl text-sm text-ink/55">
             Track purchases by length, clothing sales, and credit payments for{" "}
-            <span className="font-medium text-ink/75">{scopeLabel}</span>.
+            <span className="font-medium text-ink/75">{scopeLabel}</span>
+            {" · "}
+            <span className="font-medium text-ink/75">{sourceLabel}</span>.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -585,14 +619,31 @@ export function InventoryDashboardPage() {
         </p>
       ) : null}
 
-      <PeriodFilter
-        period={period}
-        startDate={startDate}
-        endDate={endDate}
-        onPeriodChange={setPeriod}
-        onStartDateChange={setStartDate}
-        onEndDateChange={setEndDate}
-      />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <PeriodFilter
+          period={period}
+          startDate={startDate}
+          endDate={endDate}
+          onPeriodChange={setPeriod}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+        />
+        <label className="text-xs font-medium text-ink/60">
+          Filter by source
+          <select
+            value={sourceFilter}
+            onChange={(e) => setSourceFilter(e.target.value)}
+            className="mt-1 block min-w-[12rem] rounded-xl border border-slate-line bg-mist px-3 py-2 text-sm"
+          >
+            <option value="">All sources</option>
+            {sourceOptions.map((source) => (
+              <option key={source} value={source}>
+                {source}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       {error ? (
         <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p>
@@ -745,6 +796,21 @@ export function InventoryDashboardPage() {
                 placeholder="Cloth, source, notes…"
                 className="mt-1 block w-48 rounded-xl border border-slate-line bg-mist px-3 py-2 text-sm sm:w-56"
               />
+            </label>
+            <label className="text-xs font-medium text-ink/60">
+              Source
+              <select
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value)}
+                className="mt-1 block rounded-xl border border-slate-line bg-mist px-3 py-2 text-sm"
+              >
+                <option value="">All</option>
+                {sourceOptions.map((source) => (
+                  <option key={source} value={source}>
+                    {source}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="text-xs font-medium text-ink/60">
               Status
