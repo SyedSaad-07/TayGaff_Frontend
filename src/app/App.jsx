@@ -30,8 +30,8 @@ function CatchAllRedirect() {
 
 export function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
@@ -100,7 +100,7 @@ export function App() {
           </Route>
           <Route path="*" element={<CatchAllRedirect />} />
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

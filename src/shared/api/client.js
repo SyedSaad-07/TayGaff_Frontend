@@ -23,6 +23,28 @@ export class ApiError extends Error {
   }
 }
 
+let unauthorizedHandler = null;
+
+/** Register a handler for expired/missing auth sessions (e.g. logout + redirect). */
+export function setUnauthorizedHandler(handler) {
+  unauthorizedHandler = typeof handler === "function" ? handler : null;
+}
+
+function isPublicAuthPath(path) {
+  return path === "/auth/login" || path.startsWith("/auth/login?");
+}
+
+function handleUnauthorized() {
+  tokenStore.clear();
+  if (unauthorizedHandler) {
+    unauthorizedHandler();
+    return;
+  }
+  if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+    window.location.assign("/login");
+  }
+}
+
 async function request(path, options = {}) {
   const headers = new Headers(options.headers || {});
   headers.set("Content-Type", "application/json");
@@ -46,8 +68,8 @@ async function request(path, options = {}) {
 
   if (!response.ok || !body?.success) {
     const message = body?.message || "Request failed";
-    if (response.status === 401) {
-      tokenStore.clear();
+    if (response.status === 401 && !isPublicAuthPath(path)) {
+      handleUnauthorized();
     }
     throw new ApiError(message, response.status);
   }
