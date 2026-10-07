@@ -8,6 +8,7 @@ import {
   Building2,
   LogOut,
   Scissors,
+  FileText,
 } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
 
@@ -117,6 +118,17 @@ export function AdminModulesPage() {
               </span>
             </Link>
           ))}
+        </div>
+
+        <div className="mt-8">
+          <Link
+            to="/docs/legacy-schema"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-line bg-mist/80 px-4 py-3 text-sm text-ink/80 transition hover:border-brass/40 hover:text-ink"
+          >
+            <FileText size={16} className="text-brass" />
+            Legacy data schema map
+            <ArrowRight size={14} />
+          </Link>
         </div>
       </main>
     </div>

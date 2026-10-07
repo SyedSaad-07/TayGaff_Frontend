@@ -13,6 +13,7 @@ import { InventoryDashboardPage } from "@/features/inventory/InventoryDashboardP
 import { InventoryDetailPage } from "@/features/inventory/InventoryDetailPage";
 import { AdminModulesPage } from "@/features/modules/AdminModulesPage";
 import { BookingsPage } from "@/features/bookings/BookingsPage";
+import { LegacyDataSchemaPage } from "@/features/docs/LegacyDataSchemaPage";
 
 function HomeRedirect() {
   const { user, loading } = useAuth();
@@ -96,6 +97,14 @@ export function App() {
                 }
               />
               <Route path="bookings" element={<BookingsPage />} />
+              <Route
+                path="docs/legacy-schema"
+                element={
+                  <AdminRoute>
+                    <LegacyDataSchemaPage />
+                  </AdminRoute>
+                }
+              />
             </Route>
           </Route>
           <Route path="*" element={<CatchAllRedirect />} />

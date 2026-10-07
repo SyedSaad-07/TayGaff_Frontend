@@ -8,6 +8,7 @@ import {
   Building2,
   LayoutGrid,
   Package,
+  FileText,
 } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { isAdmin } from "@/features/auth/roles";
@@ -35,6 +36,7 @@ export function AppShell() {
   const inBranches = path.startsWith("/branches");
   const inInventory = path.startsWith("/inventory");
   const inBookings = path.startsWith("/bookings");
+  const inDocs = path.startsWith("/docs");
   const showBranchSwitcher = admin && (inExpenses || inInventory);
 
   return (
@@ -110,6 +112,18 @@ export function AppShell() {
                   <NavLink to="/bookings" className={linkClass}>
                     <CalendarClock size={17} />
                     Booking
+                  </NavLink>
+                </>
+              ) : null}
+
+              {inDocs ? (
+                <>
+                  <p className="px-3 pb-1 pt-3 text-[11px] uppercase tracking-[0.18em] text-white/35">
+                    Docs
+                  </p>
+                  <NavLink to="/docs/legacy-schema" className={linkClass}>
+                    <FileText size={17} />
+                    Legacy schema
                   </NavLink>
                 </>
               ) : null}
