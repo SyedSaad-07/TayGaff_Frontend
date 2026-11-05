@@ -4,7 +4,8 @@ import { Pencil, Trash2 } from "lucide-react";
 import { expenseApi } from "@/features/expenses/api";
 import { useBranch } from "@/features/branches/BranchContext";
 import { ALL_BRANCHES } from "@/features/branches/branchUtils";
-import { ApiError } from "@/shared/api/client";
+import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import { getErrorMessage } from "@/shared/api/client";
 import {
   CATEGORY_COLORS,
   formatCurrency,
@@ -42,6 +43,8 @@ export function ExpensesPage() {
   const [filterType, setFilterType] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => {
     if (!editingId) {
@@ -74,7 +77,7 @@ export function ExpensesPage() {
       setItems(result.items);
       setTotalPages(result.pagination.totalPages || 1);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to load expenses");
+      setError(getErrorMessage(err, "Failed to load expenses"));
     } finally {
       setLoading(false);
     }
@@ -132,7 +135,7 @@ export function ExpensesPage() {
       resetForm();
       await loadExpenses();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to save expense");
+      setError(getErrorMessage(err, "Unable to save expense"));
     } finally {
       setSaving(false);
     }
@@ -150,13 +153,18 @@ export function ExpensesPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const onDelete = async (id) => {
-    if (!window.confirm("Delete this expense?")) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget?._id) return;
+    setDeleteBusy(true);
+    setError("");
     try {
-      await expenseApi.remove(id);
+      await expenseApi.remove(deleteTarget._id);
+      setDeleteTarget(null);
       await loadExpenses();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to delete expense");
+      setError(getErrorMessage(err, "Unable to delete expense"));
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -413,7 +421,7 @@ export function ExpensesPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => void onDelete(expense._id)}
+                          onClick={() => setDeleteTarget(expense)}
                           className="rounded-lg border border-slate-line p-2 text-danger/70 transition hover:text-danger"
                           aria-label="Delete expense"
                         >
@@ -447,6 +455,22 @@ export function ExpensesPage() {
           Next
         </button>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete this expense?"
+        message={`${deleteTarget?.expenseType || "Expense"} · ${
+          deleteTarget ? formatCurrency(deleteTarget.amount) : ""
+        }. This will move it out of the live list.`}
+        confirmLabel="Delete expense"
+        cancelLabel="Keep"
+        tone="danger"
+        busy={deleteBusy}
+        onCancel={() => {
+          if (!deleteBusy) setDeleteTarget(null);
+        }}
+        onConfirm={() => void confirmDelete()}
+      />
     </div>
   );
 }

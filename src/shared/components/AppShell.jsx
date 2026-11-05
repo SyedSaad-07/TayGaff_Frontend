@@ -4,14 +4,22 @@ import {
   Receipt,
   LogOut,
   Scissors,
-  CalendarClock,
-  Building2,
-  LayoutGrid,
   Package,
-  FileText,
+  Truck,
+  ShoppingCart,
+  History,
+  BarChart3,
+  Settings,
+  CalendarClock,
+  Users,
+  Shirt,
+  Tags,
+  HardHat,
+  Wallet,
+  Trash2,
 } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
-import { isAdmin } from "@/features/auth/roles";
+import { hasPermission, isAdmin, isStaffOrAdmin, MODULES } from "@/features/auth/roles";
 import { useBranch } from "@/features/branches/BranchContext";
 import { BranchSwitcher } from "@/features/branches/BranchSwitcher";
 
@@ -19,30 +27,110 @@ const navActive = "bg-brass/20 text-white";
 const navIdle = "text-white/65 hover:bg-white/5 hover:text-white";
 
 function linkClass({ isActive }) {
-  return `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+  return `flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${
     isActive ? navActive : navIdle
   }`;
 }
 
+const ALL_NAV = [
+  {
+    to: "/dashboard",
+    end: true,
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    module: MODULES.DASHBOARD,
+  },
+  {
+    to: "/inventory",
+    end: true,
+    label: "Inventory",
+    icon: Package,
+    module: MODULES.INVENTORY,
+  },
+  { to: "/inventory/pos", label: "POS", icon: ShoppingCart, module: MODULES.POS },
+  {
+    to: "/inventory/sales",
+    label: "Sales",
+    icon: History,
+    module: MODULES.SALES,
+  },
+  {
+    to: "/inventory/suppliers",
+    label: "Suppliers",
+    icon: Truck,
+    module: MODULES.SUPPLIERS,
+  },
+  { to: "/expenses", label: "Expenses", icon: Receipt, module: MODULES.EXPENSES },
+  { to: "/reports", label: "Reports", icon: BarChart3, module: MODULES.REPORTS },
+  {
+    to: "/customers",
+    end: true,
+    label: "Customers",
+    icon: Users,
+    module: MODULES.CUSTOMERS,
+  },
+  {
+    to: "/bookings",
+    end: true,
+    label: "Booking",
+    icon: CalendarClock,
+    module: MODULES.BOOKINGS,
+  },
+  {
+    to: "/stitching",
+    end: true,
+    label: "Stitching",
+    icon: Shirt,
+    module: MODULES.STITCHING,
+  },
+  { to: "/garments", end: true, label: "Garments", icon: Tags, module: MODULES.GARMENTS },
+  {
+    to: "/karigars",
+    end: true,
+    label: "Karigars",
+    icon: HardHat,
+    module: MODULES.KARIGARS,
+  },
+  {
+    to: "/karigar-payroll",
+    end: true,
+    label: "Karigar pay",
+    icon: Wallet,
+    module: MODULES.KARIGARS,
+  },
+];
+
 export function AppShell() {
   const { user, logout } = useAuth();
   const admin = isAdmin(user);
+  const staffOrAdmin = isStaffOrAdmin(user);
   const { isAllBranches, selectedBranch } = useBranch();
   const location = useLocation();
 
   const path = location.pathname;
-  const inExpenses =
-    path === "/finance" || path.startsWith("/expenses");
-  const inBranches = path.startsWith("/branches");
-  const inInventory = path.startsWith("/inventory");
-  const inBookings = path.startsWith("/bookings");
-  const inDocs = path.startsWith("/docs");
-  const showBranchSwitcher = admin && (inExpenses || inInventory);
+  const showBranchSwitcher =
+    staffOrAdmin &&
+    (path === "/dashboard" ||
+      path === "/finance" ||
+      path === "/reports" ||
+      path.startsWith("/expenses") ||
+      path.startsWith("/inventory") ||
+      path.startsWith("/bookings"));
+
+  const navItems = [
+    ...ALL_NAV.filter((item) => hasPermission(user, item.module)),
+    ...(admin
+      ? [
+          { to: "/trash", label: "Trash", icon: Trash2, end: true },
+          { to: "/settings", label: "Settings", icon: Settings, end: undefined },
+        ]
+      : []),
+  ];
 
   return (
-    <div className="min-h-screen bg-atelier lg:grid lg:grid-cols-[260px_1fr]">
-      <aside className="flex flex-col border-b border-slate-line bg-ink text-white lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:border-ink-muted">
-        <div className="flex items-center gap-3 px-6 py-6">
+    <div className="min-h-screen bg-atelier lg:grid lg:grid-cols-[240px_1fr]">
+      <aside className="flex flex-col border-b border-slate-line bg-ink text-white print:hidden lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:border-ink-muted">
+        <div className="flex items-center gap-3 px-5 py-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brass/25 text-brass-soft">
             <Scissors size={18} />
           </div>
@@ -51,92 +139,26 @@ export function AppShell() {
               Tay<span className="italic text-brass-soft">Gaff</span>
             </p>
             <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-white/45">
-              Tailor Shop
+              Shop system
             </p>
           </div>
         </div>
 
-        <nav className="space-y-1 px-3 pb-4">
-          {admin ? (
-            <>
-              <NavLink to="/modules" className={linkClass}>
-                <LayoutGrid size={17} />
-                Modules
-              </NavLink>
-
-              {inExpenses ? (
-                <>
-                  <p className="px-3 pb-1 pt-3 text-[11px] uppercase tracking-[0.18em] text-white/35">
-                    Expenses
-                  </p>
-                  <NavLink to="/finance" end className={linkClass}>
-                    <LayoutDashboard size={17} />
-                    Dashboard
-                  </NavLink>
-                  <NavLink to="/expenses" className={linkClass}>
-                    <Receipt size={17} />
-                    Expenses
-                  </NavLink>
-                </>
-              ) : null}
-
-              {inBranches ? (
-                <>
-                  <p className="px-3 pb-1 pt-3 text-[11px] uppercase tracking-[0.18em] text-white/35">
-                    Branches
-                  </p>
-                  <NavLink to="/branches" className={linkClass}>
-                    <Building2 size={17} />
-                    Manage branches
-                  </NavLink>
-                </>
-              ) : null}
-
-              {inInventory ? (
-                <>
-                  <p className="px-3 pb-1 pt-3 text-[11px] uppercase tracking-[0.18em] text-white/35">
-                    Inventory
-                  </p>
-                  <NavLink to="/inventory" end className={linkClass}>
-                    <Package size={17} />
-                    Inventory
-                  </NavLink>
-                </>
-              ) : null}
-
-              {inBookings ? (
-                <>
-                  <p className="px-3 pb-1 pt-3 text-[11px] uppercase tracking-[0.18em] text-white/35">
-                    Booking
-                  </p>
-                  <NavLink to="/bookings" className={linkClass}>
-                    <CalendarClock size={17} />
-                    Booking
-                  </NavLink>
-                </>
-              ) : null}
-
-              {inDocs ? (
-                <>
-                  <p className="px-3 pb-1 pt-3 text-[11px] uppercase tracking-[0.18em] text-white/35">
-                    Docs
-                  </p>
-                  <NavLink to="/docs/legacy-schema" className={linkClass}>
-                    <FileText size={17} />
-                    Legacy schema
-                  </NavLink>
-                </>
-              ) : null}
-            </>
-          ) : (
-            <NavLink to="/bookings" className={linkClass}>
-              <CalendarClock size={17} />
-              Booking
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={linkClass}
+            >
+              <item.icon size={18} />
+              {item.label}
             </NavLink>
-          )}
+          ))}
         </nav>
 
-        <div className="mt-auto hidden px-4 pb-6 pt-6 lg:block">
+        <div className="mt-auto hidden px-4 pb-6 pt-4 lg:block">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <p className="text-sm font-medium">{user?.name}</p>
             <p className="mt-0.5 truncate text-xs text-white/45">{user?.email}</p>
@@ -153,7 +175,7 @@ export function AppShell() {
       </aside>
 
       <div className="min-w-0">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-line/80 bg-mist/70 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-line/80 bg-mist/70 px-4 py-3 backdrop-blur print:hidden sm:px-6 lg:px-8">
           <div className="min-w-0 lg:hidden">
             <p className="text-sm font-medium">{user?.name}</p>
             <p className="truncate text-xs text-ink/50">{user?.email}</p>
@@ -164,12 +186,12 @@ export function AppShell() {
               <>
                 <div className="hidden text-right sm:block">
                   <p className="text-[11px] uppercase tracking-[0.16em] text-ink/40">
-                    Active view
+                    Shop / branch
                   </p>
                   <p className="text-sm font-medium text-ink">
                     {isAllBranches
-                      ? "All branches statistics"
-                      : selectedBranch?.name || "No branch"}
+                      ? "All shops"
+                      : selectedBranch?.name || "No shop"}
                   </p>
                 </div>
                 <BranchSwitcher />

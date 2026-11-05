@@ -16,7 +16,7 @@ import {
   storeBranchId,
   storePreferredBranchId,
 } from "@/features/branches/branchUtils";
-import { ApiError } from "@/shared/api/client";
+import { getErrorMessage } from "@/shared/api/client";
 
 const BranchContext = createContext(null);
 
@@ -39,7 +39,7 @@ export function BranchProvider({ children }) {
       setBranches(list);
       return list;
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to load branches");
+      setError(getErrorMessage(err, "Failed to load branches"));
       setBranches([]);
       return [];
     } finally {

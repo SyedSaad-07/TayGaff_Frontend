@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { branchApi } from "@/features/branches/api";
 import { useBranch } from "@/features/branches/BranchContext";
-import { ApiError } from "@/shared/api/client";
+import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import { getErrorMessage } from "@/shared/api/client";
 
 const emptyForm = {
   name: "",
@@ -16,6 +17,8 @@ export function BranchesPage() {
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const resetForm = () => {
     setForm(emptyForm);
@@ -47,7 +50,7 @@ export function BranchesPage() {
       await refreshBranches();
       resetForm();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to save branch");
+      setError(getErrorMessage(err, "Unable to save branch"));
     } finally {
       setSaving(false);
     }
@@ -62,13 +65,18 @@ export function BranchesPage() {
     });
   };
 
-  const onDelete = async (id) => {
-    if (!window.confirm("Delete this branch?")) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget?._id) return;
+    setDeleteBusy(true);
+    setError("");
     try {
-      await branchApi.remove(id);
+      await branchApi.remove(deleteTarget._id);
+      setDeleteTarget(null);
       await refreshBranches();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to delete branch");
+      setError(getErrorMessage(err, "Unable to delete branch"));
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -187,7 +195,7 @@ export function BranchesPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => void onDelete(branch._id)}
+                          onClick={() => setDeleteTarget(branch)}
                           className="rounded-lg border border-slate-line p-2 text-danger/70 transition hover:text-danger"
                           aria-label="Delete branch"
                         >
@@ -202,6 +210,20 @@ export function BranchesPage() {
           </table>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title={`Delete branch ${deleteTarget?.name || ""}?`}
+        message="Expenses and records tied to this branch may be affected. Only delete if you are sure."
+        confirmLabel="Delete branch"
+        cancelLabel="Keep"
+        tone="danger"
+        busy={deleteBusy}
+        onCancel={() => {
+          if (!deleteBusy) setDeleteTarget(null);
+        }}
+        onConfirm={() => void confirmDelete()}
+      />
     </div>
   );
 }

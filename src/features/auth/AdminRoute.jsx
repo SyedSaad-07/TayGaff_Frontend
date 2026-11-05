@@ -7,7 +7,7 @@ export function AdminRoute({ children }) {
 
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
-  if (!isAdmin(user)) return <Navigate to="/bookings" replace />;
+  if (!isAdmin(user)) return <Navigate to="/finance" replace />;
 
   return children;
 }

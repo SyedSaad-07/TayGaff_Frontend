@@ -10,7 +10,7 @@ import { useBranch } from "@/features/branches/BranchContext";
 import { ALL_BRANCHES } from "@/features/branches/branchUtils";
 import { toInputDate } from "@/shared/lib/format";
 import { EXPENSE_TYPES } from "@/shared/constants";
-import { ApiError } from "@/shared/api/client";
+import { getErrorMessage } from "@/shared/api/client";
 
 export function DashboardPage() {
   const { selectedBranchId, selectedBranch, isAllBranches, branches, loading: branchesLoading } =
@@ -49,7 +49,7 @@ export function DashboardPage() {
       });
       setStats(data);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to load stats");
+      setError(getErrorMessage(err, "Failed to load stats"));
     } finally {
       setLoading(false);
     }
@@ -80,7 +80,7 @@ export function DashboardPage() {
             Overview · {scopeLabel} · {typeLabel}
           </p>
           <h1 className="mt-1 font-display text-4xl text-ink sm:text-5xl">
-            Expense dashboard
+            Expense reports
           </h1>
           <p className="mt-2 max-w-xl text-sm text-ink/55">
             Monitor shop spend by day, week, month, year, or any custom window —

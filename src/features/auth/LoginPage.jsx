@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { getPostLoginPath } from "@/features/auth/roles";
-import { ApiError } from "@/shared/api/client";
+import { getErrorMessage } from "@/shared/api/client";
 
 export function LoginPage() {
   const { user, loading, login } = useAuth();
@@ -26,7 +26,7 @@ export function LoginPage() {
       const loggedInUser = await login(email.trim(), password);
       navigate(getPostLoginPath(loggedInUser), { replace: true });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to sign in");
+      setError(getErrorMessage(err, "Unable to sign in"));
     } finally {
       setSubmitting(false);
     }

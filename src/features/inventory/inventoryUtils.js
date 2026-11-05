@@ -26,3 +26,17 @@ export function formatMeters(value) {
     maximumFractionDigits: 4,
   })}m`;
 }
+
+export function formatStockQty(value, unit = "METER") {
+  const n = Number(value || 0);
+  const formatted = n.toLocaleString("en-PK", { maximumFractionDigits: 4 });
+  if (unit === "PIECE") return `${formatted} pcs`;
+  if (unit === "YARD") return `${formatted} yd`;
+  return `${formatted} m`;
+}
+
+export function unitLabel(unit = "METER") {
+  if (unit === "PIECE") return "pcs";
+  if (unit === "YARD") return "yd";
+  return "m";
+}

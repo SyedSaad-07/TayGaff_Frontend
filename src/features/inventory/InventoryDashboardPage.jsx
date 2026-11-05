@@ -21,18 +21,25 @@ import {
   TrendingUp,
   Landmark,
   Pencil,
+  Trash2,
+  Undo2,
 } from "lucide-react";
 import { inventoryApi } from "@/features/inventory/api";
+import { supplierApi } from "@/features/suppliers/api";
 import { StatusBadge } from "@/features/inventory/StatusBadge";
 import {
   formatMeters,
+  formatStockQty,
   PURCHASE_TYPES,
   SALE_CATEGORIES,
 } from "@/features/inventory/inventoryUtils";
 import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { useBranch } from "@/features/branches/BranchContext";
 import { ALL_BRANCHES } from "@/features/branches/branchUtils";
-import { ApiError } from "@/shared/api/client";
+import { useAuth } from "@/features/auth/AuthContext";
+import { isAdmin } from "@/features/auth/roles";
+import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import { getErrorMessage } from "@/shared/api/client";
 import { formatCurrency, formatDate, toInputDate } from "@/shared/lib/format";
 
 const STOCK_STATUSES = ["In Stock", "Low Stock", "Out of Stock"];
@@ -40,12 +47,15 @@ const PAYMENT_STATUSES = ["Unpaid", "Partially Paid", "Paid"];
 
 const emptyInventoryForm = () => ({
   branch: "",
+  supplier: "",
   sourceName: "",
   clothType: "",
+  color: "",
   quantity: "",
   lengthPerPiece: "",
   purchaseType: "Cash",
   purchaseAmount: "",
+  paidAmount: "",
   purchaseDate: toInputDate(),
   notes: "",
 });
@@ -77,6 +87,8 @@ function canSell(item) {
 }
 
 export function InventoryDashboardPage() {
+  const { user } = useAuth();
+  const admin = isAdmin(user);
   const {
     branches,
     selectedBranchId,
@@ -128,6 +140,9 @@ export function InventoryDashboardPage() {
   const [paymentForm, setPaymentForm] = useState(emptyPaymentForm);
   const [paymentTarget, setPaymentTarget] = useState(null);
   const [saleOptions, setSaleOptions] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (panel !== "inventory") return;
@@ -137,6 +152,14 @@ export function InventoryDashboardPage() {
     }));
   }, [defaultBranchId, panel]);
 
+  useEffect(() => {
+    if (panel !== "inventory" && panel !== "edit") return;
+    supplierApi
+      .list({ page: 1, limit: 100 })
+      .then((data) => setSuppliers(data.items || []))
+      .catch(() => setSuppliers([]));
+  }, [panel]);
+
   const totalLengthPreview = useMemo(() => {
     const form = panel === "edit" ? editForm : inventoryForm;
     const qty = Number(form.quantity);
@@ -145,7 +168,13 @@ export function InventoryDashboardPage() {
       return 0;
     }
     return Math.round(qty * len * 10000) / 10000;
-  }, [panel, inventoryForm.quantity, inventoryForm.lengthPerPiece, editForm.quantity, editForm.lengthPerPiece]);
+  }, [
+    panel,
+    inventoryForm.quantity,
+    inventoryForm.lengthPerPiece,
+    editForm.quantity,
+    editForm.lengthPerPiece,
+  ]);
 
   const selectedSaleItem = useMemo(
     () => saleOptions.find((item) => item._id === saleForm.inventoryId) || null,
@@ -184,7 +213,7 @@ export function InventoryDashboardPage() {
       });
       setStats(data);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to load inventory stats");
+      setError(getErrorMessage(err, "Failed to load inventory stats"));
     } finally {
       setLoadingStats(false);
     }
@@ -217,7 +246,7 @@ export function InventoryDashboardPage() {
         total: result.pagination?.total || 0,
       });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to load inventory");
+      setError(getErrorMessage(err, "Failed to load inventory"));
     } finally {
       setLoadingList(false);
     }
@@ -293,7 +322,7 @@ export function InventoryDashboardPage() {
       setSaleForm({ ...emptySaleForm(), inventoryId: initialId });
       setPanel("sale");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to load sale options");
+      setError(getErrorMessage(err, "Failed to load sale options"));
     } finally {
       setSaving(false);
     }
@@ -327,6 +356,21 @@ export function InventoryDashboardPage() {
     setPanel("edit");
   };
 
+  const confirmDeleteInventory = async () => {
+    if (!admin || !deleteTarget?._id) return;
+    setDeleting(true);
+    setError("");
+    try {
+      await inventoryApi.remove(deleteTarget._id);
+      setDeleteTarget(null);
+      await Promise.all([loadList(), loadStats()]);
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to delete inventory"));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const closePanel = () => {
     setPanel(null);
     setFormError("");
@@ -342,8 +386,12 @@ export function InventoryDashboardPage() {
     const lengthPerPiece = Number(inventoryForm.lengthPerPiece);
     const purchaseAmount = Number(inventoryForm.purchaseAmount);
 
-    if (!inventoryForm.sourceName.trim() || !inventoryForm.clothType.trim()) {
-      setFormError("Source and cloth type are required.");
+    if (!inventoryForm.supplier && !inventoryForm.sourceName.trim()) {
+      setFormError("Select a supplier or enter a source name.");
+      return;
+    }
+    if (!inventoryForm.clothType.trim()) {
+      setFormError("Cloth type is required.");
       return;
     }
     if (!inventoryForm.branch) {
@@ -363,12 +411,25 @@ export function InventoryDashboardPage() {
     try {
       await inventoryApi.create({
         branch: inventoryForm.branch,
-        sourceName: inventoryForm.sourceName.trim(),
+        supplier: inventoryForm.supplier || undefined,
+        sourceName: inventoryForm.supplier
+          ? undefined
+          : inventoryForm.sourceName.trim(),
         clothType: inventoryForm.clothType.trim(),
+        stockType: "FABRIC",
+        category: "Fabric",
+        unit: "METER",
+        color: inventoryForm.color.trim(),
+        sellingPrice: 0,
         quantity,
         lengthPerPiece,
         purchaseType: inventoryForm.purchaseType,
         purchaseAmount,
+        ...(inventoryForm.purchaseType === "Credit" &&
+        inventoryForm.paidAmount !== "" &&
+        Number(inventoryForm.paidAmount) >= 0
+          ? { paidAmount: Number(inventoryForm.paidAmount) }
+          : {}),
         purchaseDate: inventoryForm.purchaseDate,
         notes: inventoryForm.notes.trim(),
       });
@@ -376,7 +437,7 @@ export function InventoryDashboardPage() {
       setPage(1);
       await refreshAll();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Unable to add inventory");
+      setFormError(getErrorMessage(err, "Unable to add inventory"));
     } finally {
       setSaving(false);
     }
@@ -424,7 +485,7 @@ export function InventoryDashboardPage() {
       closePanel();
       await refreshAll();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Unable to update inventory");
+      setFormError(getErrorMessage(err, "Unable to update inventory"));
     } finally {
       setSaving(false);
     }
@@ -473,7 +534,7 @@ export function InventoryDashboardPage() {
       closePanel();
       await refreshAll();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Unable to record sale");
+      setFormError(getErrorMessage(err, "Unable to record sale"));
     } finally {
       setSaving(false);
     }
@@ -507,7 +568,7 @@ export function InventoryDashboardPage() {
       closePanel();
       await refreshAll();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Unable to record payment");
+      setFormError(getErrorMessage(err, "Unable to record payment"));
     } finally {
       setSaving(false);
     }
@@ -518,13 +579,16 @@ export function InventoryDashboardPage() {
     const rows = stats?.movement || [];
     let purchasedRunning = 0;
     let soldRunning = 0;
+    let returnedRunning = 0;
     return rows.map((row) => {
       purchasedRunning += Number(row.purchasedLength || 0);
       soldRunning += Number(row.soldLength || 0);
+      returnedRunning += Number(row.returnedLength || 0);
       return {
         ...row,
         purchasedLength: Math.round(purchasedRunning * 10000) / 10000,
         soldLength: Math.round(soldRunning * 10000) / 10000,
+        returnedLength: Math.round(returnedRunning * 10000) / 10000,
       };
     });
   }, [stats?.movement]);
@@ -543,6 +607,14 @@ export function InventoryDashboardPage() {
           value: formatCurrency(summary.periodSalesRevenue),
           icon: TrendingUp,
           hint: "Sales in selected period",
+        },
+        {
+          label: "Stock returns",
+          value: formatCurrency(summary.periodReturnValue || 0),
+          icon: Undo2,
+          hint: `${formatMeters(summary.periodReturnedLength || 0)} returned · ${
+            summary.periodReturnCount || 0
+          } txns`,
         },
         {
           label: "Outstanding Credit",
@@ -589,15 +661,13 @@ export function InventoryDashboardPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => void openSalePanel()}
-            disabled={!branches.length}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-line bg-mist px-4 py-3 text-sm font-semibold text-ink transition hover:border-brass/50 disabled:opacity-50"
+          <Link
+            to="/inventory/pos"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-line bg-mist px-4 py-3 text-sm font-semibold text-ink transition hover:border-brass/50"
           >
             <ShoppingBag size={16} />
-            Add Sale
-          </button>
+            Add Sale (POS)
+          </Link>
           <button
             type="button"
             onClick={openInventoryPanel}
@@ -674,9 +744,12 @@ export function InventoryDashboardPage() {
 
           <div className="grid gap-4 xl:grid-cols-2">
             <section className="rounded-2xl border border-slate-line/80 bg-mist/80 p-5">
-              <h3 className="font-display text-2xl text-ink">Purchase vs Sales</h3>
+              <h3 className="font-display text-2xl text-ink">
+                Purchase vs Sales vs Returns
+              </h3>
               <p className="mt-1 text-sm text-ink/50">
-                Cumulative length purchased vs sold in the selected period
+                Cumulative length purchased, sold, and returned in the selected
+                period
               </p>
               <div className="mt-4 h-72">
                 {movement.length === 0 ? (
@@ -692,6 +765,10 @@ export function InventoryDashboardPage() {
                         <linearGradient id="soldFill" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stopColor="#2a9d8f" stopOpacity={0.35} />
                           <stop offset="100%" stopColor="#2a9d8f" stopOpacity={0.02} />
+                        </linearGradient>
+                        <linearGradient id="returnFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#c45c4a" stopOpacity={0.35} />
+                          <stop offset="100%" stopColor="#c45c4a" stopOpacity={0.02} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid stroke="#d5dbe5" strokeDasharray="3 3" />
@@ -723,6 +800,14 @@ export function InventoryDashboardPage() {
                         name="Sold"
                         stroke="#2a9d8f"
                         fill="url(#soldFill)"
+                        strokeWidth={2}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="returnedLength"
+                        name="Returned"
+                        stroke="#c45c4a"
+                        fill="url(#returnFill)"
                         strokeWidth={2}
                       />
                     </AreaChart>
@@ -887,7 +972,12 @@ export function InventoryDashboardPage() {
                 ) : (
                   items.map((item) => (
                     <tr key={item._id} className="border-t border-slate-line/70">
-                      <td className="px-4 py-3 font-medium text-ink">{item.clothType}</td>
+                      <td className="px-4 py-3 font-medium text-ink">
+                        <p>{item.clothType}</p>
+                        {item.color ? (
+                          <p className="text-xs text-muted">{item.color}</p>
+                        ) : null}
+                      </td>
                       <td className="px-4 py-3 text-ink/75">
                         {item.branch?.name || "—"}
                       </td>
@@ -900,7 +990,7 @@ export function InventoryDashboardPage() {
                         {formatMeters(item.totalLength)}
                       </td>
                       <td className="px-4 py-3 font-medium text-ink">
-                        {formatMeters(item.availableLength)}
+                        {formatStockQty(item.availableLength, item.unit || "METER")}
                       </td>
                       <td className="px-4 py-3 text-ink/70">{item.purchaseType}</td>
                       <td className="px-4 py-3 font-medium">
@@ -932,13 +1022,12 @@ export function InventoryDashboardPage() {
                             Edit
                           </button>
                           {canSell(item) ? (
-                            <button
-                              type="button"
-                              onClick={() => void openSalePanel(item._id)}
+                            <Link
+                              to={`/inventory/pos?inventoryId=${item._id}`}
                               className="rounded-lg border border-slate-line px-2.5 py-1.5 text-xs font-medium text-ink/70 transition hover:border-brass/40 hover:text-ink"
                             >
                               Add Sale
-                            </button>
+                            </Link>
                           ) : null}
                           {canRecordPayment(item) ? (
                             <button
@@ -947,6 +1036,17 @@ export function InventoryDashboardPage() {
                               className="rounded-lg border border-brass/30 bg-brass/10 px-2.5 py-1.5 text-xs font-medium text-brass-deep transition hover:bg-brass/15"
                             >
                               Record Payment
+                            </button>
+                          ) : null}
+                          {admin ? (
+                            <button
+                              type="button"
+                              onClick={() => setDeleteTarget(item)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-danger/30 px-2.5 py-1.5 text-xs font-medium text-danger transition hover:bg-danger/5"
+                              title="Soft-delete (Trash)"
+                            >
+                              <Trash2 size={12} />
+                              Delete
                             </button>
                           ) : null}
                         </div>
@@ -985,7 +1085,7 @@ export function InventoryDashboardPage() {
       </section>
 
       {panel === "inventory" ? (
-        <Modal title="Add Inventory" onClose={closePanel}>
+        <Modal title="Add Cloth Inventory" onClose={closePanel}>
           <form onSubmit={onCreateInventory} className="grid gap-4 sm:grid-cols-2">
             <label className="text-xs font-medium text-ink/60 sm:col-span-2">
               Branch
@@ -1009,14 +1109,37 @@ export function InventoryDashboardPage() {
               </select>
             </label>
             <label className="text-xs font-medium text-ink/60">
-              Source name
+              Supplier
+              <select
+                value={inventoryForm.supplier}
+                onChange={(e) =>
+                  setInventoryForm((prev) => ({ ...prev, supplier: e.target.value }))
+                }
+                className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
+              >
+                <option value="">Select supplier (or type source)</option>
+                {suppliers.map((s) => (
+                  <option key={s._id} value={s._id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+              <Link
+                to="/inventory/suppliers"
+                className="mt-1 inline-block text-[11px] text-brass"
+              >
+                Manage / add suppliers
+              </Link>
+            </label>
+            <label className="text-xs font-medium text-ink/60">
+              Source name (if no supplier)
               <input
-                required
                 value={inventoryForm.sourceName}
+                disabled={Boolean(inventoryForm.supplier)}
                 onChange={(e) =>
                   setInventoryForm((prev) => ({ ...prev, sourceName: e.target.value }))
                 }
-                className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
+                className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm disabled:bg-slate-canvas"
                 placeholder="Supplier / mill"
               />
             </label>
@@ -1029,11 +1152,22 @@ export function InventoryDashboardPage() {
                   setInventoryForm((prev) => ({ ...prev, clothType: e.target.value }))
                 }
                 className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
-                placeholder="e.g. Lawn, Khaddar"
+                placeholder="e.g. Lawn, Khaddar, Wash & Wear"
               />
             </label>
             <label className="text-xs font-medium text-ink/60">
-              Quantity
+              Color
+              <input
+                value={inventoryForm.color}
+                onChange={(e) =>
+                  setInventoryForm((prev) => ({ ...prev, color: e.target.value }))
+                }
+                className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
+                placeholder="Optional"
+              />
+            </label>
+            <label className="text-xs font-medium text-ink/60">
+              Rolls / pieces
               <input
                 type="number"
                 required
@@ -1106,6 +1240,42 @@ export function InventoryDashboardPage() {
                 className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
               />
             </label>
+            {inventoryForm.purchaseType === "Credit" ? (
+              <label className="text-xs font-medium text-ink/60 sm:col-span-2">
+                Amount paid now (optional partial)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  max={Number(inventoryForm.purchaseAmount) || undefined}
+                  value={inventoryForm.paidAmount}
+                  onChange={(e) =>
+                    setInventoryForm((prev) => ({
+                      ...prev,
+                      paidAmount: e.target.value,
+                    }))
+                  }
+                  className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
+                  placeholder="0 = full credit"
+                />
+                {Number(inventoryForm.purchaseAmount) > 0 ? (
+                  <p className="mt-1.5 text-xs text-muted">
+                    Remaining on supplier ledger:{" "}
+                    {formatCurrency(
+                      Math.max(
+                        0,
+                        Number(inventoryForm.purchaseAmount) -
+                          Number(inventoryForm.paidAmount || 0)
+                      )
+                    )}
+                  </p>
+                ) : null}
+              </label>
+            ) : (
+              <p className="text-xs text-muted sm:col-span-2">
+                Cash purchase: full amount is recorded as paid; supplier balance does not increase.
+              </p>
+            )}
             <label className="text-xs font-medium text-ink/60">
               Purchase date
               <input
@@ -1546,6 +1716,23 @@ export function InventoryDashboardPage() {
           </form>
         </Modal>
       ) : null}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title={`Delete ${deleteTarget?.clothType || "inventory"}`}
+        message={
+          `Move this lot from ${deleteTarget?.sourceName || "supplier"} to Trash. ` +
+          "Supplier outstanding and stock leave live views. Any POS receipts that used this lot are soft-deleted too (recoverable from Trash)."
+        }
+        confirmLabel="Delete inventory"
+        cancelLabel="Keep"
+        tone="danger"
+        busy={deleting}
+        onCancel={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+        onConfirm={() => void confirmDeleteInventory()}
+      />
     </div>
   );
 }

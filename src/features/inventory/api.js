@@ -36,12 +36,22 @@ export const inventoryApi = {
     return api.post(`/inventories/${id}/archive`);
   },
 
+  /** Admin soft-delete — recoverable from Trash. */
+  remove(id) {
+    return api.delete(`/inventories/${id}`);
+  },
+
   createSale(id, payload) {
     return api.post(`/inventories/${id}/sales`, payload);
   },
 
   recordPayment(id, payload) {
     return api.post(`/inventories/${id}/payments`, payload);
+  },
+
+  /** Return unsold stock to supplier (or write-off). */
+  returnStock(id, payload) {
+    return api.post(`/inventories/${id}/returns`, payload);
   },
 
   history(id) {

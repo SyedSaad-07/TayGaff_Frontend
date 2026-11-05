@@ -1,13 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Pencil, ShoppingBag, Wallet } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  Pencil,
+  ShoppingBag,
+  Trash2,
+  Undo2,
+  Wallet,
+} from "lucide-react";
 import { inventoryApi } from "@/features/inventory/api";
 import { StatusBadge } from "@/features/inventory/StatusBadge";
 import {
   formatMeters,
   SALE_CATEGORIES,
 } from "@/features/inventory/inventoryUtils";
-import { ApiError } from "@/shared/api/client";
+import { useAuth } from "@/features/auth/AuthContext";
+import { isAdmin } from "@/features/auth/roles";
+import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import { getErrorMessage } from "@/shared/api/client";
 import { formatCurrency, formatDate, toInputDate } from "@/shared/lib/format";
 
 const emptySaleForm = () => ({
@@ -23,6 +33,14 @@ const emptyPaymentForm = () => ({
   amount: "",
   paymentDate: toInputDate(),
   note: "",
+});
+
+const emptyReturnForm = () => ({
+  lengthReturned: "",
+  amount: "",
+  returnDate: toInputDate(),
+  reason: "",
+  mode: "SUPPLIER_RETURN",
 });
 
 const emptyEditForm = () => ({
@@ -48,6 +66,18 @@ function canSell(inventory) {
   );
 }
 
+function canReturn(inventory) {
+  return Number(inventory?.availableLength || 0) > 0;
+}
+
+function suggestedReturnAmount(inventory, lengthReturned) {
+  const total = Number(inventory?.totalLength || 0);
+  const purchase = Number(inventory?.purchaseAmount || 0);
+  const qty = Number(lengthReturned || 0);
+  if (!(total > 0) || !(qty > 0)) return "";
+  return String(Math.round(((purchase / total) * qty) * 100) / 100);
+}
+
 function ledgerTone(type) {
   switch (type) {
     case "Purchase":
@@ -56,6 +86,10 @@ function ledgerTone(type) {
       return "border-success/30 bg-success/10 text-success";
     case "Payment":
       return "border-ink/20 bg-slate-canvas text-ink";
+    case "Return":
+      return "border-danger/30 bg-danger/10 text-danger";
+    case "Sale Return":
+      return "border-brass/30 bg-brass/5 text-brass-deep";
     default:
       return "border-slate-line bg-mist text-ink/70";
   }
@@ -63,14 +97,20 @@ function ledgerTone(type) {
 
 export function InventoryDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const admin = isAdmin(user);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [panel, setPanel] = useState(null); // sale | payment | edit
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [panel, setPanel] = useState(null); // sale | payment | return | edit
   const [saleForm, setSaleForm] = useState(emptySaleForm);
   const [paymentForm, setPaymentForm] = useState(emptyPaymentForm);
+  const [returnForm, setReturnForm] = useState(emptyReturnForm);
   const [editForm, setEditForm] = useState(emptyEditForm);
 
   const loadHistory = useCallback(async () => {
@@ -83,7 +123,7 @@ export function InventoryDetailPage() {
     } catch (err) {
       setData(null);
       setError(
-        err instanceof ApiError ? err.message : "Failed to load inventory history"
+        getErrorMessage(err, "Failed to load inventory history")
       );
     } finally {
       setLoading(false);
@@ -106,6 +146,10 @@ export function InventoryDetailPage() {
       { label: "Available", value: formatMeters(inventory.availableLength) },
       { label: "Total length", value: formatMeters(inventory.totalLength) },
       { label: "Sold length", value: formatMeters(summary.soldLength) },
+      {
+        label: "Returned length",
+        value: formatMeters(summary.returnedLength || 0),
+      },
       { label: "Purchase amount", value: formatCurrency(inventory.purchaseAmount) },
       { label: "Paid", value: formatCurrency(inventory.paidAmount) },
       {
@@ -114,6 +158,20 @@ export function InventoryDetailPage() {
       },
     ];
   }, [inventory, summary]);
+
+  const deleteInventory = async () => {
+    if (!admin || !inventory?._id) return;
+    setDeleting(true);
+    setError("");
+    try {
+      await inventoryApi.remove(inventory._id);
+      setConfirmDelete(false);
+      navigate("/inventory", { replace: true });
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to delete inventory"));
+      setDeleting(false);
+    }
+  };
 
   const openSalePanel = () => {
     setFormError("");
@@ -129,6 +187,13 @@ export function InventoryDetailPage() {
       amount: String(inventory.outstandingAmount ?? ""),
     });
     setPanel("payment");
+  };
+
+  const openReturnPanel = () => {
+    if (!inventory || !canReturn(inventory)) return;
+    setFormError("");
+    setReturnForm(emptyReturnForm());
+    setPanel("return");
   };
 
   const openEditPanel = () => {
@@ -190,7 +255,7 @@ export function InventoryDetailPage() {
       closePanel();
       await loadHistory();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Unable to record sale");
+      setFormError(getErrorMessage(err, "Unable to record sale"));
     } finally {
       setSaving(false);
     }
@@ -225,8 +290,58 @@ export function InventoryDetailPage() {
       await loadHistory();
     } catch (err) {
       setFormError(
-        err instanceof ApiError ? err.message : "Unable to record payment"
+        getErrorMessage(err, "Unable to record payment")
       );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onReturnStock = async (event) => {
+    event.preventDefault();
+    setFormError("");
+    if (!inventory?._id) return;
+
+    const lengthReturned = Number(returnForm.lengthReturned);
+    const available = Number(inventory.availableLength || 0);
+    const amountRaw = String(returnForm.amount || "").trim();
+    const amount = amountRaw === "" ? undefined : Number(amountRaw);
+
+    if (!(lengthReturned > 0)) {
+      setFormError("Return quantity must be greater than zero.");
+      return;
+    }
+    if (lengthReturned > available + 0.0001) {
+      setFormError(
+        `Cannot return more than available (${formatMeters(available)}).`
+      );
+      return;
+    }
+    if (amount != null && (!(amount >= 0) || Number.isNaN(amount))) {
+      setFormError("Return amount cannot be negative.");
+      return;
+    }
+    if (
+      amount != null &&
+      amount > Number(inventory.purchaseAmount || 0) + 0.0001
+    ) {
+      setFormError("Return amount cannot exceed the lot purchase amount.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await inventoryApi.returnStock(inventory._id, {
+        lengthReturned,
+        ...(amount != null ? { amount } : {}),
+        returnDate: returnForm.returnDate,
+        reason: returnForm.reason.trim(),
+        mode: returnForm.mode,
+      });
+      closePanel();
+      await loadHistory();
+    } catch (err) {
+      setFormError(getErrorMessage(err, "Unable to record stock return"));
     } finally {
       setSaving(false);
     }
@@ -269,7 +384,7 @@ export function InventoryDetailPage() {
       await loadHistory();
     } catch (err) {
       setFormError(
-        err instanceof ApiError ? err.message : "Unable to update inventory"
+        getErrorMessage(err, "Unable to update inventory")
       );
     } finally {
       setSaving(false);
@@ -337,14 +452,13 @@ export function InventoryDetailPage() {
             Edit
           </button>
           {canSell(inventory) ? (
-            <button
-              type="button"
-              onClick={openSalePanel}
+            <Link
+              to={`/inventory/pos?inventoryId=${inventory._id}`}
               className="inline-flex items-center gap-2 rounded-xl border border-slate-line bg-mist px-4 py-3 text-sm font-semibold text-ink transition hover:border-brass/50"
             >
               <ShoppingBag size={16} />
-              Add Sale
-            </button>
+              Add Sale (POS)
+            </Link>
           ) : null}
           {canRecordPayment(inventory) ? (
             <button
@@ -354,6 +468,27 @@ export function InventoryDetailPage() {
             >
               <Wallet size={16} />
               Record Payment
+            </button>
+          ) : null}
+          {canReturn(inventory) ? (
+            <button
+              type="button"
+              onClick={openReturnPanel}
+              className="inline-flex items-center gap-2 rounded-xl border border-danger/40 bg-danger/5 px-4 py-3 text-sm font-semibold text-danger transition hover:bg-danger/10"
+            >
+              <Undo2 size={16} />
+              Return stock
+            </button>
+          ) : null}
+          {admin ? (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              disabled={deleting}
+              className="inline-flex items-center gap-2 rounded-xl border border-danger/40 bg-danger/5 px-4 py-3 text-sm font-semibold text-danger transition hover:bg-danger/10 disabled:opacity-50"
+            >
+              <Trash2 size={16} />
+              Delete
             </button>
           ) : null}
         </div>
@@ -668,6 +803,136 @@ export function InventoryDetailPage() {
         </Modal>
       ) : null}
 
+      {panel === "return" ? (
+        <Modal title="Return stock" onClose={closePanel}>
+          <form onSubmit={onReturnStock} className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-dashed border-slate-line bg-slate-canvas/50 px-3 py-2.5 sm:col-span-2">
+              <p className="text-xs text-ink/55">Available to return</p>
+              <p className="mt-0.5 font-display text-xl text-ink">
+                {formatMeters(inventory.availableLength)}
+              </p>
+              <p className="mt-1 text-xs text-muted">
+                Returns unsold stock only. Customer POS returns stay on Sales
+                history.
+              </p>
+            </div>
+            <label className="text-xs font-medium text-ink/60 sm:col-span-2">
+              Return type
+              <select
+                value={returnForm.mode}
+                onChange={(e) =>
+                  setReturnForm((prev) => ({ ...prev, mode: e.target.value }))
+                }
+                className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
+              >
+                <option value="SUPPLIER_RETURN">
+                  Supplier return (stock + purchase credit)
+                </option>
+                <option value="WRITE_OFF">
+                  Write-off (damage / shrinkage — no supplier credit)
+                </option>
+              </select>
+            </label>
+            <label className="text-xs font-medium text-ink/60">
+              Quantity returned
+              <input
+                type="number"
+                required
+                min="0.01"
+                step="any"
+                max={inventory.availableLength}
+                value={returnForm.lengthReturned}
+                onChange={(e) => {
+                  const lengthReturned = e.target.value;
+                  setReturnForm((prev) => ({
+                    ...prev,
+                    lengthReturned,
+                    amount:
+                      prev.mode === "WRITE_OFF"
+                        ? prev.amount
+                        : suggestedReturnAmount(inventory, lengthReturned),
+                  }));
+                }}
+                className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
+              />
+            </label>
+            <label className="text-xs font-medium text-ink/60">
+              Return date
+              <input
+                type="date"
+                required
+                max={toInputDate()}
+                value={returnForm.returnDate}
+                onChange={(e) =>
+                  setReturnForm((prev) => ({
+                    ...prev,
+                    returnDate: e.target.value,
+                  }))
+                }
+                className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
+              />
+            </label>
+            {returnForm.mode === "SUPPLIER_RETURN" ? (
+              <label className="text-xs font-medium text-ink/60 sm:col-span-2">
+                Credit amount (optional)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  max={inventory.purchaseAmount}
+                  value={returnForm.amount}
+                  onChange={(e) =>
+                    setReturnForm((prev) => ({
+                      ...prev,
+                      amount: e.target.value,
+                    }))
+                  }
+                  className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
+                  placeholder="Defaults to prorated purchase cost"
+                />
+              </label>
+            ) : null}
+            <label className="text-xs font-medium text-ink/60 sm:col-span-2">
+              Reason
+              <input
+                type="text"
+                maxLength={500}
+                value={returnForm.reason}
+                onChange={(e) =>
+                  setReturnForm((prev) => ({
+                    ...prev,
+                    reason: e.target.value,
+                  }))
+                }
+                className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
+                placeholder="e.g. Defective cloth returned to supplier"
+              />
+            </label>
+            {formError ? (
+              <p className="rounded-xl bg-danger/10 px-3 py-2 text-sm text-danger sm:col-span-2">
+                {formError}
+              </p>
+            ) : null}
+            <div className="flex gap-2 sm:col-span-2">
+              <button
+                type="submit"
+                disabled={saving}
+                className="rounded-xl bg-brass px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brass-deep disabled:opacity-60"
+              >
+                {saving ? "Saving…" : "Confirm return"}
+              </button>
+              <button
+                type="button"
+                onClick={closePanel}
+                className="rounded-xl border border-slate-line px-4 py-2.5 text-sm font-medium text-ink/70"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
       {panel === "payment" ? (
         <Modal title="Record Payment" onClose={closePanel}>
           <form onSubmit={onRecordPayment} className="grid gap-4 sm:grid-cols-2">
@@ -861,6 +1126,23 @@ export function InventoryDetailPage() {
           </form>
         </Modal>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title={`Delete ${inventory.clothType}`}
+        message={
+          `Move this lot from ${inventory.sourceName || "supplier"} to Trash. ` +
+          "Supplier outstanding and stock leave live views. Any POS receipts that used this lot are soft-deleted too (recoverable from Trash)."
+        }
+        confirmLabel="Delete inventory"
+        cancelLabel="Keep"
+        tone="danger"
+        busy={deleting}
+        onCancel={() => {
+          if (!deleting) setConfirmDelete(false);
+        }}
+        onConfirm={() => void deleteInventory()}
+      />
     </div>
   );
 }
