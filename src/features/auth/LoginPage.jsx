@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { getPostLoginPath } from "@/features/auth/roles";
 import { getErrorMessage } from "@/shared/api/client";
+import { BrandLogo } from "@/shared/components/BrandLogo";
 
 export function LoginPage() {
   const { user, loading, login } = useAuth();
@@ -40,7 +41,8 @@ export function LoginPage() {
           <div className="absolute bottom-10 right-10 h-80 w-80 rounded-full bg-brass/10 blur-3xl" />
         </div>
         <div className="relative">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brass-soft">
+          <BrandLogo className="h-14 w-auto max-w-[260px] object-contain object-left" />
+          <p className="mt-8 text-xs font-semibold uppercase tracking-[0.28em] text-brass-soft">
             Premium men&apos;s tailoring
           </p>
           <h1 className="mt-6 font-display text-6xl leading-none text-white xl:text-7xl">
@@ -62,17 +64,12 @@ export function LoginPage() {
           onSubmit={onSubmit}
           className="w-full max-w-md animate-[fadeUp_0.55s_ease-out]"
         >
-          <p className="inline-flex rounded-full border border-brass/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-brass">
-            Premium men&apos;s tailoring
-          </p>
-          <p className="mt-5 font-display text-4xl text-ink lg:hidden">
-            Tay<span className="italic text-brass">Gaff</span>
-          </p>
-          <h2 className="mt-3 font-display text-3xl text-ink sm:text-4xl">
-            Admin <span className="italic text-brass">sign in</span>
+          <BrandLogo className="h-12 w-auto max-w-[220px] object-contain object-left" />
+          <h2 className="mt-6 font-display text-3xl text-ink sm:text-4xl">
+            Sign <span className="italic text-brass">in</span>
           </h2>
           <p className="mt-2 text-sm text-muted">
-            Access your expense dashboard and shop ledger.
+            Access your shop dashboard and ledger.
           </p>
 
           <label className="mt-8 block text-sm font-medium text-ink/80">

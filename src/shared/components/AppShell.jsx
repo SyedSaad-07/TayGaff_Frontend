@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Receipt,
   LogOut,
-  Scissors,
   Package,
   Truck,
   ShoppingCart,
@@ -22,6 +21,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { hasPermission, isAdmin, isStaffOrAdmin, MODULES } from "@/features/auth/roles";
 import { useBranch } from "@/features/branches/BranchContext";
 import { BranchSwitcher } from "@/features/branches/BranchSwitcher";
+import { BrandLogo } from "@/shared/components/BrandLogo";
 
 const navActive = "bg-brass/20 text-white";
 const navIdle = "text-white/65 hover:bg-white/5 hover:text-white";
@@ -130,18 +130,8 @@ export function AppShell() {
   return (
     <div className="min-h-screen bg-atelier lg:grid lg:grid-cols-[240px_1fr]">
       <aside className="flex flex-col border-b border-slate-line bg-ink text-white print:hidden lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:border-ink-muted">
-        <div className="flex items-center gap-3 px-5 py-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brass/25 text-brass-soft">
-            <Scissors size={18} />
-          </div>
-          <div>
-            <p className="font-display text-2xl leading-none">
-              Tay<span className="italic text-brass-soft">Gaff</span>
-            </p>
-            <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-white/45">
-              Shop system
-            </p>
-          </div>
+        <div className="flex items-center px-4 py-5">
+          <BrandLogo className="h-11 w-auto max-w-[200px] object-contain object-left" />
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">

@@ -1,5 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <rect width="64" height="64" rx="12" fill="#1c2b46"/>
-  <path d="M18 44V20l14 10 14-10v24" stroke="#3b5bdb" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="32" cy="36" r="3" fill="#3b5bdb"/>
+  <rect width="64" height="64" fill="#000"/>
+  <!-- Blue G ring -->
+  <path
+    d="M32 8c-13.255 0-24 10.745-24 24s10.745 24 24 24c8.284 0 15.57-4.2 19.8-10.55L42.2 39.2C39.7 42.7 36.05 45 32 45c-7.18 0-13-5.82-13-13s5.82-13 13-13c3.7 0 7.05 1.55 9.4 4.05L51.05 13.4C46.55 10 39.7 8 32 8z"
+    fill="#2563eb"
+  />
+  <path d="M44 29h12v6H38.5z" fill="#2563eb"/>
+  <!-- Red T -->
+  <path d="M18 12h28v8H36v32h-8V20H18V12z" fill="#dc2626"/>
 </svg>
