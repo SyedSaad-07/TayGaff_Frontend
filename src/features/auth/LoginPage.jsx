@@ -115,7 +115,7 @@ export function LoginPage() {
             disabled={submitting}
             className="mt-6 w-full rounded-xl bg-brass px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-brass-deep disabled:opacity-60"
           >
-            {submitting ? "Signing in…" : "Enter dashboard"}
+            {submitting ? "Signing in…" : "Sign in"}
           </button>
         </form>
       </section>
