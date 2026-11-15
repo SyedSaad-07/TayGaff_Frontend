@@ -5,6 +5,7 @@ import {
   Users,
   Truck,
   Wallet,
+  Banknote,
   TrendingUp,
   CalendarClock,
   Scissors,
@@ -42,11 +43,11 @@ export function OverviewTab({ data, stream, compare = true }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <KpiCard
           icon={TrendingUp}
-          label="Total revenue"
-          hint="Inventory net sales + booking order totals"
+          label="Total sales"
+          hint="Full billed amount · inventory + bookings"
         >
           <p className="font-display text-3xl text-ink">
             {formatCurrency(cards.totalRevenue)}
@@ -61,8 +62,8 @@ export function OverviewTab({ data, stream, compare = true }) {
         {showInv ? (
           <KpiCard
             icon={ShoppingBag}
-            label="Inventory revenue"
-            hint="Sale date · net of returns"
+            label="Inventory sales"
+            hint="Invoice totals · sale date · net of returns"
           >
             <p className="font-display text-3xl text-ink">
               {formatCurrency(cards.inventoryRevenue)}
@@ -78,8 +79,8 @@ export function OverviewTab({ data, stream, compare = true }) {
         {showBook ? (
           <KpiCard
             icon={Scissors}
-            label="Booking revenue"
-            hint="Cash collected on payment date"
+            label="Booking sales"
+            hint="Booking order totals · created in period"
           >
             <p className="font-display text-3xl text-ink">
               {formatCurrency(cards.bookingRevenue)}
@@ -91,9 +92,23 @@ export function OverviewTab({ data, stream, compare = true }) {
         ) : null}
 
         <KpiCard
+          icon={Banknote}
+          label="Cash received"
+          hint="Money actually collected · inventory + bookings"
+        >
+          <p className="font-display text-3xl text-ink">
+            {formatCurrency(cards.cashReceived)}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            Inv {formatCurrency(cards.inventoryCollected)} · Book{" "}
+            {formatCurrency(cards.bookingCollected)}
+          </p>
+        </KpiCard>
+
+        <KpiCard
           icon={Wallet}
-          label="Outstanding"
-          hint="Open balances · inventory + bookings"
+          label="Accounts receivable (Udhaar)"
+          hint="Still owed by customers · inventory + bookings"
         >
           <p className="font-display text-3xl text-ink">
             {formatCurrency(cards.outstandingPayments)}
@@ -218,7 +233,7 @@ export function OverviewTab({ data, stream, compare = true }) {
         {showInv ? (
           <Panel
             title="Top products"
-            subtitle="By inventory revenue"
+            subtitle="By inventory sales (after discount)"
             actions={
               <Link
                 to="/inventory/sales"

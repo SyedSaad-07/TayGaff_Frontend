@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Tags,
   HardHat,
+  Scissors,
   Database,
   Images,
 } from "lucide-react";
@@ -46,6 +47,12 @@ export function SettingsPage() {
             title: "Karigar work & payments",
             description: "Open cloths by rate and payment records",
             icon: HardHat,
+          },
+          {
+            to: "/cutter-payroll",
+            title: "Cutter work & payments",
+            description: "Open cloths by rate and payment records",
+            icon: Scissors,
           },
           {
             to: "/settings/import",

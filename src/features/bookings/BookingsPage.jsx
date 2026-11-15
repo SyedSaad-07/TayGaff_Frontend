@@ -25,6 +25,8 @@ const emptyLine = () => ({
   itemName: "",
   quantity: 1,
   amount: "",
+  karigarCode: "",
+  cutterCode: "",
   stitchingInstructions: "",
   remarks: "",
   measurementSnapshot: {},
@@ -56,6 +58,7 @@ export function BookingsPage() {
   const [searchParams] = useSearchParams();
   const presetCustomerId = searchParams.get("customerId") || "";
   const presetProfileId = searchParams.get("profileId") || "";
+  const filterCreatedById = searchParams.get("createdById") || "";
   const { statuses: filterStatuses } = useBookingStatusesInUse();
   const {
     branches,
@@ -86,6 +89,8 @@ export function BookingsPage() {
   const [deleteBusy, setDeleteBusy] = useState(false);
 
   const [garmentItems, setGarmentItems] = useState([]);
+  const [karigars, setKarigars] = useState([]);
+  const [cutters, setCutters] = useState([]);
   const [measureFields, setMeasureFields] = useState([]);
   const [profiles, setProfiles] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -120,6 +125,7 @@ export function BookingsPage() {
         status: status || undefined,
         overdue: overdue || undefined,
         customerId: presetCustomerId || undefined,
+        createdById: filterCreatedById || undefined,
       });
       setItems(data.items || []);
       setPagination(data.pagination || { page: 1, totalPages: 1, total: 0 });
@@ -128,7 +134,7 @@ export function BookingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, status, overdue, presetCustomerId]);
+  }, [page, search, status, overdue, presetCustomerId, filterCreatedById]);
 
   useEffect(() => {
     void load();
@@ -138,12 +144,16 @@ export function BookingsPage() {
     if (!showCreate) return;
     void (async () => {
       try {
-        const [itemsData, fields] = await Promise.all([
+        const [itemsData, fields, karigarList, cutterList] = await Promise.all([
           bookingApi.garmentItems(),
           bookingApi.measureFields(),
+          bookingApi.karigars().catch(() => []),
+          bookingApi.cutters().catch(() => []),
         ]);
         setGarmentItems(Array.isArray(itemsData) ? itemsData : []);
         setMeasureFields(Array.isArray(fields) ? fields : []);
+        setKarigars(Array.isArray(karigarList) ? karigarList : []);
+        setCutters(Array.isArray(cutterList) ? cutterList : []);
       } catch (err) {
         setError(getErrorMessage(err, "Failed to load form data"));
       }
@@ -323,6 +333,8 @@ export function BookingsPage() {
           itemName: l.itemName,
           quantity: Number(l.quantity) || 1,
           amount: Number(l.amount) || 0,
+          karigarCode: l.karigarCode || "",
+          cutterCode: l.cutterCode || "",
           stitchingInstructions: l.stitchingInstructions,
           remarks: l.remarks,
           measurementSnapshot: Object.fromEntries(
@@ -455,7 +467,10 @@ export function BookingsPage() {
                     >
                       {b.folio}
                     </Link>
-                    <p className="text-xs text-muted">{b.bookingNumber}</p>
+                    <p className="text-xs text-muted">
+                      {b.bookingNumber} · Booked by{" "}
+                      {b.bookedByName || b.createdBy?.name || "Legacy/Unknown"}
+                    </p>
                   </td>
                   <td className="px-3 py-2.5">
                     {b.customerName}
@@ -672,6 +687,60 @@ export function BookingsPage() {
                       className="mt-1 w-full rounded-xl border border-slate-line px-3 py-2"
                     />
                   </label>
+                  <label className="block text-sm">
+                    <span className="text-muted">Karigar</span>
+                    <select
+                      value={activeLine.karigarCode || ""}
+                      onChange={(e) =>
+                        updateLine(activeLineIdx, { karigarCode: e.target.value })
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-line px-3 py-2"
+                    >
+                      <option value="">Optional</option>
+                      {karigars.map((k) => (
+                        <option key={k._id || k.code} value={k.code}>
+                          {formatKarigarLabel(k.name, k.code)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block text-sm">
+                    <span className="text-muted">Cutter</span>
+                    <select
+                      value={activeLine.cutterCode || ""}
+                      onChange={(e) =>
+                        updateLine(activeLineIdx, { cutterCode: e.target.value })
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-line px-3 py-2"
+                    >
+                      <option value="">Optional</option>
+                      {cutters.map((c) => (
+                        <option key={c._id || c.code} value={c.code}>
+                          {formatKarigarLabel(c.name, c.code)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="flex items-end sm:col-span-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const codeK = activeLine.karigarCode || "";
+                        const codeC = activeLine.cutterCode || "";
+                        setForm((f) => ({
+                          ...f,
+                          lines: f.lines.map((l) => ({
+                            ...l,
+                            karigarCode: codeK,
+                            cutterCode: codeC,
+                          })),
+                        }));
+                      }}
+                      className="rounded-xl border border-slate-line px-3 py-2 text-xs"
+                    >
+                      Apply workers to all items
+                    </button>
+                  </div>
                 </div>
 
                 {profiles.length > 0 ? (

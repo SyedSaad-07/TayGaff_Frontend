@@ -25,6 +25,14 @@ import { StitchingPage } from "@/features/bookings/StitchingPage";
 import { GarmentItemsPage } from "@/features/bookings/GarmentItemsPage";
 import { KarigarsPage } from "@/features/bookings/KarigarsPage";
 import { KarigarPayrollPage } from "@/features/bookings/KarigarPayrollPage";
+import { CutterPayrollPage } from "@/features/bookings/CutterPayrollPage";
+import { CuttersPage } from "@/features/bookings/CuttersPage";
+import { WorkerAssignedItemsPage } from "@/features/bookings/WorkerAssignedItemsPage";
+import { StaffBookingReportPage } from "@/features/bookings/StaffBookingReportPage";
+import {
+  ProductivityWorkersPage,
+  ProductivityDetailPage,
+} from "@/features/pressman/ProductivityWorkersPage";
 import { LegacyDataSchemaPage } from "@/features/docs/LegacyDataSchemaPage";
 import { TrashPage } from "@/features/trash/TrashPage";
 import { SuppliersPage } from "@/features/suppliers/SuppliersPage";
@@ -258,6 +266,86 @@ export function App() {
                   <Permit modules={[MODULES.KARIGARS]}>
                     <KarigarPayrollPage />
                   </Permit>
+                }
+              />
+              <Route
+                path="karigars/:id/items"
+                element={
+                  <Permit modules={[MODULES.KARIGARS]}>
+                    <WorkerAssignedItemsPage role="karigar" />
+                  </Permit>
+                }
+              />
+              <Route
+                path="cutters"
+                element={
+                  <Permit modules={[MODULES.CUTTERS]}>
+                    <CuttersPage />
+                  </Permit>
+                }
+              />
+              <Route
+                path="cutter-payroll"
+                element={
+                  <Permit modules={[MODULES.CUTTERS]}>
+                    <CutterPayrollPage />
+                  </Permit>
+                }
+              />
+              <Route
+                path="cutters/:id"
+                element={
+                  <Permit modules={[MODULES.CUTTERS]}>
+                    <WorkerAssignedItemsPage role="cutter" />
+                  </Permit>
+                }
+              />
+              <Route
+                path="cutters/:id/items"
+                element={
+                  <Permit modules={[MODULES.CUTTERS]}>
+                    <WorkerAssignedItemsPage role="cutter" />
+                  </Permit>
+                }
+              />
+              <Route
+                path="pressmen"
+                element={
+                  <Permit modules={[MODULES.PRESSMAN]}>
+                    <ProductivityWorkersPage kind="pressman" />
+                  </Permit>
+                }
+              />
+              <Route
+                path="pressmen/:id"
+                element={
+                  <Permit modules={[MODULES.PRESSMAN]}>
+                    <ProductivityDetailPage kind="pressman" />
+                  </Permit>
+                }
+              />
+              <Route
+                path="accessories"
+                element={
+                  <Permit modules={[MODULES.ACCESSORIES]}>
+                    <ProductivityWorkersPage kind="accessories" />
+                  </Permit>
+                }
+              />
+              <Route
+                path="accessories/:id"
+                element={
+                  <Permit modules={[MODULES.ACCESSORIES]}>
+                    <ProductivityDetailPage kind="accessories" />
+                  </Permit>
+                }
+              />
+              <Route
+                path="reports/staff-bookings"
+                element={
+                  <AdminRoute>
+                    <StaffBookingReportPage />
+                  </AdminRoute>
                 }
               />
 

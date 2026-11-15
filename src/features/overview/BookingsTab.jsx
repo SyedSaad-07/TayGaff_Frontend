@@ -12,7 +12,13 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { CalendarClock, CircleDollarSign, Ban, Wallet } from "lucide-react";
+import {
+  CalendarClock,
+  CircleDollarSign,
+  Ban,
+  Wallet,
+  Banknote,
+} from "lucide-react";
 import { formatCurrency, formatDate } from "@/shared/lib/format";
 import {
   ChartCard,
@@ -106,21 +112,29 @@ export function BookingsTab({ data }) {
         </KpiCard>
         <KpiCard
           icon={CircleDollarSign}
-          label="Order value"
-          hint="Non-cancelled booking totals"
+          label="Booking sales"
+          hint="Full billed booking totals · created in period"
         >
           <p className="font-display text-3xl text-ink">
             {formatCurrency(cards.orderValue)}
           </p>
         </KpiCard>
-        <KpiCard label="Collected" hint="Payments by paidAt">
+        <KpiCard
+          icon={Banknote}
+          label="Cash received"
+          hint="Money actually collected · payment date"
+        >
           <p className="font-display text-3xl text-ink">
-            {formatCurrency(cards.revenueCollected)}
+            {formatCurrency(cards.cashReceived ?? cards.revenueCollected)}
           </p>
         </KpiCard>
-        <KpiCard icon={Wallet} label="Pending / deposit" hint="Open balances">
+        <KpiCard
+          icon={Wallet}
+          label="Accounts receivable (Udhaar)"
+          hint="Still owed by customers on bookings"
+        >
           <p className="font-display text-3xl text-ink">
-            {formatCurrency(cards.pendingDeposit)}
+            {formatCurrency(cards.accountsReceivable ?? cards.pendingDeposit)}
           </p>
           <p className="mt-1 text-xs text-muted">
             {cards.pendingCount} open with balance

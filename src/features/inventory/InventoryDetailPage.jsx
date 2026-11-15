@@ -46,8 +46,10 @@ const emptyReturnForm = () => ({
 const emptyEditForm = () => ({
   sourceName: "",
   clothType: "",
+  lengthMode: "same",
   quantity: "",
   lengthPerPiece: "",
+  totalLength: "",
   purchaseDate: toInputDate(),
   notes: "",
 });
@@ -202,8 +204,10 @@ export function InventoryDetailPage() {
     setEditForm({
       sourceName: inventory.sourceName || "",
       clothType: inventory.clothType || "",
+      lengthMode: "same",
       quantity: String(inventory.quantity ?? ""),
       lengthPerPiece: String(inventory.lengthPerPiece ?? ""),
+      totalLength: String(inventory.totalLength ?? ""),
       purchaseDate: toInputDate(inventory.purchaseDate),
       notes: inventory.notes || "",
     });
@@ -354,6 +358,8 @@ export function InventoryDetailPage() {
 
     const quantity = Number(editForm.quantity);
     const lengthPerPiece = Number(editForm.lengthPerPiece);
+    const totalLength = Number(editForm.totalLength);
+    const mixedLengths = editForm.lengthMode === "different";
     const hasSales =
       Number(inventory.totalLength) - Number(inventory.availableLength) > 0.00001;
 
@@ -361,9 +367,20 @@ export function InventoryDetailPage() {
       setFormError("Source and cloth type are required.");
       return;
     }
-    if (!hasSales && (!(quantity > 0) || !(lengthPerPiece > 0))) {
-      setFormError("Quantity and length per piece must be greater than zero.");
-      return;
+    if (!hasSales) {
+      if (!(quantity > 0)) {
+        setFormError("Quantity must be greater than zero.");
+        return;
+      }
+      if (mixedLengths) {
+        if (!(totalLength > 0)) {
+          setFormError("Total length must be greater than zero.");
+          return;
+        }
+      } else if (!(lengthPerPiece > 0)) {
+        setFormError("Length per piece must be greater than zero.");
+        return;
+      }
     }
 
     const payload = {
@@ -374,7 +391,11 @@ export function InventoryDetailPage() {
     };
     if (!hasSales) {
       payload.quantity = quantity;
-      payload.lengthPerPiece = lengthPerPiece;
+      if (mixedLengths) {
+        payload.totalLength = totalLength;
+      } else {
+        payload.lengthPerPiece = lengthPerPiece;
+      }
     }
 
     setSaving(true);
@@ -1044,6 +1065,44 @@ export function InventoryDetailPage() {
               </div>
             ) : (
               <>
+                <fieldset className="sm:col-span-2">
+                  <legend className="text-xs font-medium text-ink/60">
+                    Piece lengths
+                  </legend>
+                  <div className="mt-1 flex flex-wrap gap-4">
+                    <label className="inline-flex items-center gap-2 text-sm text-ink">
+                      <input
+                        type="radio"
+                        name="detail-edit-length-mode"
+                        checked={editForm.lengthMode === "same"}
+                        onChange={() =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            lengthMode: "same",
+                          }))
+                        }
+                      />
+                      Same length
+                    </label>
+                    <label className="inline-flex items-center gap-2 text-sm text-ink">
+                      <input
+                        type="radio"
+                        name="detail-edit-length-mode"
+                        checked={editForm.lengthMode === "different"}
+                        onChange={() =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            lengthMode: "different",
+                            totalLength:
+                              prev.totalLength ||
+                              String(inventory.totalLength ?? ""),
+                          }))
+                        }
+                      />
+                      Different lengths
+                    </label>
+                  </div>
+                </fieldset>
                 <label className="text-xs font-medium text-ink/60">
                   Quantity
                   <input
@@ -1058,23 +1117,43 @@ export function InventoryDetailPage() {
                     className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
                   />
                 </label>
-                <label className="text-xs font-medium text-ink/60">
-                  Length per piece (m)
-                  <input
-                    type="number"
-                    required
-                    min="0.01"
-                    step="any"
-                    value={editForm.lengthPerPiece}
-                    onChange={(e) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        lengthPerPiece: e.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
-                  />
-                </label>
+                {editForm.lengthMode === "same" ? (
+                  <label className="text-xs font-medium text-ink/60">
+                    Length per piece (m)
+                    <input
+                      type="number"
+                      required
+                      min="0.01"
+                      step="any"
+                      value={editForm.lengthPerPiece}
+                      onChange={(e) =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          lengthPerPiece: e.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
+                    />
+                  </label>
+                ) : (
+                  <label className="text-xs font-medium text-ink/60">
+                    Total length (m)
+                    <input
+                      type="number"
+                      required
+                      min="0.01"
+                      step="any"
+                      value={editForm.totalLength}
+                      onChange={(e) =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          totalLength: e.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
+                    />
+                  </label>
+                )}
               </>
             )}
             <label className="text-xs font-medium text-ink/60">

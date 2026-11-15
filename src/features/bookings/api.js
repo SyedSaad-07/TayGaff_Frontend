@@ -57,6 +57,57 @@ export const bookingApi = {
   restoreKarigar(id) {
     return api.post(`/bookings/karigars/${id}/restore`);
   },
+  softDeleteKarigar(id) {
+    return api.delete(`/bookings/karigars/${id}`);
+  },
+  listKarigarAssignedItems(id, params = {}) {
+    return api.get(`/bookings/karigars/${id}/assigned-items${toQuery(params)}`);
+  },
+  cutters() {
+    return api.get("/bookings/cutters");
+  },
+  listCutters(params = {}) {
+    return api.get(`/bookings/cutters${toQuery({ manage: true, ...params })}`);
+  },
+  getCutter(id) {
+    return api.get(`/bookings/cutters/${id}`);
+  },
+  createCutter(payload) {
+    return api.post("/bookings/cutters", payload);
+  },
+  updateCutter(id, payload) {
+    return api.patch(`/bookings/cutters/${id}`, payload);
+  },
+  archiveCutter(id) {
+    return api.post(`/bookings/cutters/${id}/archive`);
+  },
+  restoreCutter(id) {
+    return api.post(`/bookings/cutters/${id}/restore`);
+  },
+  softDeleteCutter(id) {
+    return api.delete(`/bookings/cutters/${id}`);
+  },
+  listCutterAssignedItems(id, params = {}) {
+    return api.get(`/bookings/cutters/${id}/assigned-items${toQuery(params)}`);
+  },
+  listCutterRates(params = {}) {
+    return api.get(`/bookings/cutter-rates${toQuery(params)}`);
+  },
+  createCutterRate(payload) {
+    return api.post("/bookings/cutter-rates", payload);
+  },
+  updateCutterRate(id, payload) {
+    return api.patch(`/bookings/cutter-rates/${id}`, payload);
+  },
+  deleteCutterRate(id) {
+    return api.delete(`/bookings/cutter-rates/${id}`);
+  },
+  staffBookingReport(params = {}) {
+    return api.get(`/bookings/reports/staff-bookings${toQuery(params)}`);
+  },
+  workshopSlip(id, params = {}) {
+    return api.get(`/bookings/${id}/workshop-slip${toQuery(params)}`);
+  },
   listKarigarRates(params = {}) {
     return api.get(`/bookings/karigar-rates${toQuery(params)}`);
   },
@@ -83,6 +134,21 @@ export const bookingApi = {
   },
   deleteKarigarPayment(id, paymentId) {
     return api.delete(`/bookings/karigars/${id}/payments/${paymentId}`);
+  },
+  listCutterPayroll() {
+    return api.get("/bookings/cutter-payroll");
+  },
+  getCutterPayroll(id) {
+    return api.get(`/bookings/cutters/${id}/payroll`);
+  },
+  listCutterPayments(id, params = {}) {
+    return api.get(`/bookings/cutters/${id}/payments${toQuery(params)}`);
+  },
+  createCutterPayment(id, payload) {
+    return api.post(`/bookings/cutters/${id}/payments`, payload);
+  },
+  deleteCutterPayment(id, paymentId) {
+    return api.delete(`/bookings/cutters/${id}/payments/${paymentId}`);
   },
   measurementProfiles(params = {}) {
     return api.get(`/bookings/measurement-profiles${toQuery(params)}`);

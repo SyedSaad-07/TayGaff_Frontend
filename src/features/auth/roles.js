@@ -17,6 +17,9 @@ export const MODULES = {
   STITCHING: "stitching",
   GARMENTS: "garments",
   KARIGARS: "karigars",
+  CUTTERS: "cutters",
+  PRESSMAN: "pressman",
+  ACCESSORIES: "accessories",
 };
 
 export const MODULE_OPTIONS = [
@@ -32,6 +35,9 @@ export const MODULE_OPTIONS = [
   { key: MODULES.STITCHING, label: "Stitching" },
   { key: MODULES.GARMENTS, label: "Garments" },
   { key: MODULES.KARIGARS, label: "Karigars" },
+  { key: MODULES.CUTTERS, label: "Cutters" },
+  { key: MODULES.PRESSMAN, label: "Pressman" },
+  { key: MODULES.ACCESSORIES, label: "Accessories" },
 ];
 
 /** Default landing page after login / home redirect — overall business dashboard. */
@@ -50,6 +56,9 @@ const MODULE_HOME = {
   [MODULES.STITCHING]: "/stitching",
   [MODULES.GARMENTS]: "/garments",
   [MODULES.KARIGARS]: "/karigars",
+  [MODULES.CUTTERS]: "/cutters",
+  [MODULES.PRESSMAN]: "/pressmen",
+  [MODULES.ACCESSORIES]: "/accessories",
 };
 
 export function isAdmin(user) {

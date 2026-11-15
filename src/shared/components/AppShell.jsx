@@ -16,6 +16,7 @@ import {
   HardHat,
   Wallet,
   Trash2,
+  Scissors,
 } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { hasPermission, isAdmin, isStaffOrAdmin, MODULES } from "@/features/auth/roles";
@@ -97,6 +98,34 @@ const ALL_NAV = [
     label: "Karigar pay",
     icon: Wallet,
     module: MODULES.KARIGARS,
+  },
+  {
+    to: "/cutters",
+    end: true,
+    label: "Cutters",
+    icon: Scissors,
+    module: MODULES.CUTTERS,
+  },
+  {
+    to: "/cutter-payroll",
+    end: true,
+    label: "Cutter pay",
+    icon: Wallet,
+    module: MODULES.CUTTERS,
+  },
+  {
+    to: "/pressmen",
+    end: true,
+    label: "Pressman",
+    icon: Shirt,
+    module: MODULES.PRESSMAN,
+  },
+  {
+    to: "/accessories",
+    end: true,
+    label: "Accessories",
+    icon: Tags,
+    module: MODULES.ACCESSORIES,
   },
 ];
 

@@ -114,12 +114,6 @@ export function ReceiptPreview({ sale, actions }) {
               <span>-{formatCurrency(sale.discountTotal)}</span>
             </div>
           ) : null}
-          {Number(sale.taxTotal) > 0 ? (
-            <div className="flex justify-between">
-              <span className="text-muted">Tax</span>
-              <span>{formatCurrency(sale.taxTotal)}</span>
-            </div>
-          ) : null}
           <div className="flex justify-between text-base font-semibold">
             <span>Total</span>
             <span>{formatCurrency(sale.grandTotal)}</span>

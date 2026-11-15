@@ -14,7 +14,7 @@ import { toInputDate } from "@/shared/lib/format";
 const VIEWS = [
   { id: "overview", label: "Overview" },
   { id: "inventory", label: "Inventory sales" },
-  { id: "bookings", label: "Booking revenue" },
+  { id: "bookings", label: "Booking sales" },
 ];
 
 const STREAMS = [
@@ -120,7 +120,7 @@ export function OverallDashboardPage() {
             Dashboard
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-ink/55">
-            Combined inventory sales and booking collections — PKR · Asia/Karachi.
+            Sales billed, cash received, and udhaar — PKR · Asia/Karachi.
             {compare ? " Growth compares to the previous equal period." : ""}
           </p>
         </div>

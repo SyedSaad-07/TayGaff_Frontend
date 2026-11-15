@@ -47,11 +47,10 @@ const REPORTS = [
     icon: Truck,
   },
   {
-    to: "/bookings",
-    title: "Customers (coming soon)",
-    description: "Customer list will open with the Booking module",
+    to: "/reports/staff-bookings",
+    title: "Bookings by staff",
+    description: "Admin: who booked how many orders in a date range",
     icon: Users,
-    soon: true,
   },
   {
     to: "/inventory/sales",

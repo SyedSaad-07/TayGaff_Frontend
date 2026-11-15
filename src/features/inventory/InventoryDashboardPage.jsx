@@ -51,8 +51,10 @@ const emptyInventoryForm = () => ({
   sourceName: "",
   clothType: "",
   color: "",
+  lengthMode: "same",
   quantity: "",
   lengthPerPiece: "",
+  totalLength: "",
   purchaseType: "Cash",
   purchaseAmount: "",
   paidAmount: "",
@@ -162,6 +164,12 @@ export function InventoryDashboardPage() {
 
   const totalLengthPreview = useMemo(() => {
     const form = panel === "edit" ? editForm : inventoryForm;
+    if (form.lengthMode === "different") {
+      const total = Number(form.totalLength);
+      return Number.isFinite(total) && total > 0
+        ? Math.round(total * 10000) / 10000
+        : 0;
+    }
     const qty = Number(form.quantity);
     const len = Number(form.lengthPerPiece);
     if (!Number.isFinite(qty) || !Number.isFinite(len) || qty <= 0 || len <= 0) {
@@ -170,10 +178,14 @@ export function InventoryDashboardPage() {
     return Math.round(qty * len * 10000) / 10000;
   }, [
     panel,
+    inventoryForm.lengthMode,
     inventoryForm.quantity,
     inventoryForm.lengthPerPiece,
+    inventoryForm.totalLength,
+    editForm.lengthMode,
     editForm.quantity,
     editForm.lengthPerPiece,
+    editForm.totalLength,
   ]);
 
   const selectedSaleItem = useMemo(
@@ -343,11 +355,14 @@ export function InventoryDashboardPage() {
     setFormError("");
     setEditTarget(item);
     setEditForm({
+      ...emptyInventoryForm(),
       branch: item.branch?._id || item.branch || defaultBranchId,
       sourceName: item.sourceName || "",
       clothType: item.clothType || "",
+      lengthMode: "same",
       quantity: String(item.quantity ?? ""),
       lengthPerPiece: String(item.lengthPerPiece ?? ""),
+      totalLength: String(item.totalLength ?? ""),
       purchaseType: item.purchaseType || "Cash",
       purchaseAmount: String(item.purchaseAmount ?? ""),
       purchaseDate: toInputDate(item.purchaseDate),
@@ -384,7 +399,9 @@ export function InventoryDashboardPage() {
 
     const quantity = Number(inventoryForm.quantity);
     const lengthPerPiece = Number(inventoryForm.lengthPerPiece);
+    const totalLength = Number(inventoryForm.totalLength);
     const purchaseAmount = Number(inventoryForm.purchaseAmount);
+    const mixedLengths = inventoryForm.lengthMode === "different";
 
     if (!inventoryForm.supplier && !inventoryForm.sourceName.trim()) {
       setFormError("Select a supplier or enter a source name.");
@@ -398,8 +415,17 @@ export function InventoryDashboardPage() {
       setFormError("Please select a branch.");
       return;
     }
-    if (!(quantity > 0) || !(lengthPerPiece > 0)) {
-      setFormError("Quantity and length per piece must be greater than zero.");
+    if (!(quantity > 0)) {
+      setFormError("Rolls / pieces must be greater than zero.");
+      return;
+    }
+    if (mixedLengths) {
+      if (!(totalLength > 0)) {
+        setFormError("Total length must be greater than zero.");
+        return;
+      }
+    } else if (!(lengthPerPiece > 0)) {
+      setFormError("Length per piece must be greater than zero.");
       return;
     }
     if (!(purchaseAmount >= 0)) {
@@ -422,7 +448,9 @@ export function InventoryDashboardPage() {
         color: inventoryForm.color.trim(),
         sellingPrice: 0,
         quantity,
-        lengthPerPiece,
+        ...(mixedLengths
+          ? { totalLength }
+          : { lengthPerPiece }),
         purchaseType: inventoryForm.purchaseType,
         purchaseAmount,
         ...(inventoryForm.purchaseType === "Credit" &&
@@ -450,6 +478,8 @@ export function InventoryDashboardPage() {
 
     const quantity = Number(editForm.quantity);
     const lengthPerPiece = Number(editForm.lengthPerPiece);
+    const totalLength = Number(editForm.totalLength);
+    const mixedLengths = editForm.lengthMode === "different";
     const hasSales =
       Number(editTarget.totalLength) - Number(editTarget.availableLength) > 0.00001;
 
@@ -461,9 +491,20 @@ export function InventoryDashboardPage() {
       setFormError("Please select a branch.");
       return;
     }
-    if (!hasSales && (!(quantity > 0) || !(lengthPerPiece > 0))) {
-      setFormError("Quantity and length per piece must be greater than zero.");
-      return;
+    if (!hasSales) {
+      if (!(quantity > 0)) {
+        setFormError("Quantity must be greater than zero.");
+        return;
+      }
+      if (mixedLengths) {
+        if (!(totalLength > 0)) {
+          setFormError("Total length must be greater than zero.");
+          return;
+        }
+      } else if (!(lengthPerPiece > 0)) {
+        setFormError("Length per piece must be greater than zero.");
+        return;
+      }
     }
 
     const payload = {
@@ -476,7 +517,11 @@ export function InventoryDashboardPage() {
 
     if (!hasSales) {
       payload.quantity = quantity;
-      payload.lengthPerPiece = lengthPerPiece;
+      if (mixedLengths) {
+        payload.totalLength = totalLength;
+      } else {
+        payload.lengthPerPiece = lengthPerPiece;
+      }
     }
 
     setSaving(true);
@@ -606,7 +651,7 @@ export function InventoryDashboardPage() {
           label: "Sales Revenue",
           value: formatCurrency(summary.periodSalesRevenue),
           icon: TrendingUp,
-          hint: "Sales in selected period",
+          hint: "Invoice totals in period (not cash collected)",
         },
         {
           label: "Stock returns",
@@ -1166,6 +1211,41 @@ export function InventoryDashboardPage() {
                 placeholder="Optional"
               />
             </label>
+            <fieldset className="sm:col-span-2">
+              <legend className="text-xs font-medium text-ink/60">
+                Piece lengths
+              </legend>
+              <div className="mt-1 flex flex-wrap gap-4">
+                <label className="inline-flex items-center gap-2 text-sm text-ink">
+                  <input
+                    type="radio"
+                    name="inventory-length-mode"
+                    checked={inventoryForm.lengthMode === "same"}
+                    onChange={() =>
+                      setInventoryForm((prev) => ({
+                        ...prev,
+                        lengthMode: "same",
+                      }))
+                    }
+                  />
+                  Same length
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm text-ink">
+                  <input
+                    type="radio"
+                    name="inventory-length-mode"
+                    checked={inventoryForm.lengthMode === "different"}
+                    onChange={() =>
+                      setInventoryForm((prev) => ({
+                        ...prev,
+                        lengthMode: "different",
+                      }))
+                    }
+                  />
+                  Different lengths
+                </label>
+              </div>
+            </fieldset>
             <label className="text-xs font-medium text-ink/60">
               Rolls / pieces
               <input
@@ -1180,28 +1260,59 @@ export function InventoryDashboardPage() {
                 className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
               />
             </label>
-            <label className="text-xs font-medium text-ink/60">
-              Length per piece (m)
-              <input
-                type="number"
-                required
-                min="0.01"
-                step="any"
-                value={inventoryForm.lengthPerPiece}
-                onChange={(e) =>
-                  setInventoryForm((prev) => ({
-                    ...prev,
-                    lengthPerPiece: e.target.value,
-                  }))
-                }
-                className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
-              />
-            </label>
+            {inventoryForm.lengthMode === "same" ? (
+              <label className="text-xs font-medium text-ink/60">
+                Length per piece (m)
+                <input
+                  type="number"
+                  required
+                  min="0.01"
+                  step="any"
+                  value={inventoryForm.lengthPerPiece}
+                  onChange={(e) =>
+                    setInventoryForm((prev) => ({
+                      ...prev,
+                      lengthPerPiece: e.target.value,
+                    }))
+                  }
+                  className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
+                />
+              </label>
+            ) : (
+              <label className="text-xs font-medium text-ink/60">
+                Total length (m)
+                <input
+                  type="number"
+                  required
+                  min="0.01"
+                  step="any"
+                  value={inventoryForm.totalLength}
+                  onChange={(e) =>
+                    setInventoryForm((prev) => ({
+                      ...prev,
+                      totalLength: e.target.value,
+                    }))
+                  }
+                  className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
+                  placeholder="e.g. 31 for 21m + 10m"
+                />
+              </label>
+            )}
             <div className="rounded-xl border border-dashed border-brass/40 bg-brass/5 px-3 py-2.5 sm:col-span-2">
-              <p className="text-xs font-medium text-ink/55">Total length preview</p>
+              <p className="text-xs font-medium text-ink/55">
+                {inventoryForm.lengthMode === "same"
+                  ? "Total length preview"
+                  : "Stocked total length"}
+              </p>
               <p className="mt-1 font-display text-2xl text-ink">
                 {formatMeters(totalLengthPreview)}
               </p>
+              {inventoryForm.lengthMode === "different" ? (
+                <p className="mt-1 text-xs text-ink/50">
+                  Enter the sum of all piece lengths. Avg length is stored for
+                  reporting.
+                </p>
+              ) : null}
             </div>
             <label className="text-xs font-medium text-ink/60">
               Purchase type
@@ -1383,6 +1494,44 @@ export function InventoryDashboardPage() {
               </div>
             ) : (
               <>
+                <fieldset className="sm:col-span-2">
+                  <legend className="text-xs font-medium text-ink/60">
+                    Piece lengths
+                  </legend>
+                  <div className="mt-1 flex flex-wrap gap-4">
+                    <label className="inline-flex items-center gap-2 text-sm text-ink">
+                      <input
+                        type="radio"
+                        name="edit-length-mode"
+                        checked={editForm.lengthMode === "same"}
+                        onChange={() =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            lengthMode: "same",
+                          }))
+                        }
+                      />
+                      Same length
+                    </label>
+                    <label className="inline-flex items-center gap-2 text-sm text-ink">
+                      <input
+                        type="radio"
+                        name="edit-length-mode"
+                        checked={editForm.lengthMode === "different"}
+                        onChange={() =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            lengthMode: "different",
+                            totalLength:
+                              prev.totalLength ||
+                              String(editTarget.totalLength ?? ""),
+                          }))
+                        }
+                      />
+                      Different lengths
+                    </label>
+                  </div>
+                </fieldset>
                 <label className="text-xs font-medium text-ink/60">
                   Quantity
                   <input
@@ -1397,25 +1546,49 @@ export function InventoryDashboardPage() {
                     className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
                   />
                 </label>
-                <label className="text-xs font-medium text-ink/60">
-                  Length per piece (m)
-                  <input
-                    type="number"
-                    required
-                    min="0.01"
-                    step="any"
-                    value={editForm.lengthPerPiece}
-                    onChange={(e) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        lengthPerPiece: e.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
-                  />
-                </label>
+                {editForm.lengthMode === "same" ? (
+                  <label className="text-xs font-medium text-ink/60">
+                    Length per piece (m)
+                    <input
+                      type="number"
+                      required
+                      min="0.01"
+                      step="any"
+                      value={editForm.lengthPerPiece}
+                      onChange={(e) =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          lengthPerPiece: e.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
+                    />
+                  </label>
+                ) : (
+                  <label className="text-xs font-medium text-ink/60">
+                    Total length (m)
+                    <input
+                      type="number"
+                      required
+                      min="0.01"
+                      step="any"
+                      value={editForm.totalLength}
+                      onChange={(e) =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          totalLength: e.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
+                    />
+                  </label>
+                )}
                 <div className="rounded-xl border border-dashed border-brass/40 bg-brass/5 px-3 py-2.5 sm:col-span-2">
-                  <p className="text-xs font-medium text-ink/55">Total length preview</p>
+                  <p className="text-xs font-medium text-ink/55">
+                    {editForm.lengthMode === "same"
+                      ? "Total length preview"
+                      : "Stocked total length"}
+                  </p>
                   <p className="mt-1 font-display text-2xl text-ink">
                     {formatMeters(totalLengthPreview)}
                   </p>

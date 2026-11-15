@@ -7,6 +7,7 @@ import { ReceiptPreview } from "@/features/sales/ReceiptPreview";
 import { PosCustomerPicker } from "@/features/sales/PosCustomerPicker";
 import { useBranch } from "@/features/branches/BranchContext";
 import { ALL_BRANCHES } from "@/features/branches/branchUtils";
+import { useAuth } from "@/features/auth/AuthContext";
 import { formatStockQty, unitLabel } from "@/features/inventory/inventoryUtils";
 import { TENDER_METHODS } from "@/shared/constants";
 import { getErrorMessage } from "@/shared/api/client";
@@ -30,6 +31,7 @@ export function PosPage() {
   const [searchParams] = useSearchParams();
   const editSaleId = searchParams.get("saleId") || "";
   const seedInventoryId = searchParams.get("inventoryId") || "";
+  const { user } = useAuth();
 
   const {
     branches,
@@ -60,7 +62,6 @@ export function PosPage() {
   const [paymentReference, setPaymentReference] = useState("");
   const [amountPaid, setAmountPaid] = useState("");
   const [discountTotal, setDiscountTotal] = useState("0");
-  const [taxTotal, setTaxTotal] = useState("0");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -126,7 +127,6 @@ export function PosPage() {
         setPaymentMethod(sale.paymentMethod || "Cash");
         setAmountPaid(String(sale.amountPaid ?? ""));
         setDiscountTotal(String(sale.discountTotal ?? "0"));
-        setTaxTotal(String(sale.taxTotal ?? "0"));
         setNotes(sale.notes || "");
         setCart(
           (sale.items || []).map((item) => {
@@ -291,9 +291,9 @@ export function PosPage() {
     [cart]
   );
   const discount = Number(discountTotal || 0);
-  const tax = Number(taxTotal || 0);
-  const grandTotal = Math.max(0, subtotal - discount + tax);
-  const paid = amountPaid === "" ? grandTotal : Number(amountPaid || 0);
+  const grandTotal = Math.max(0, subtotal - discount);
+  // Empty amount paid means nothing collected — do not assume full payment.
+  const paid = amountPaid === "" ? 0 : Number(amountPaid || 0);
   const appliedPaid = Math.min(paid, grandTotal);
   const changeDue = Math.max(0, paid - grandTotal);
   const balanceDue = Math.max(0, grandTotal - appliedPaid);
@@ -316,7 +316,6 @@ export function PosPage() {
       discount: Number(line.discount || 0),
     })),
     discountTotal: discount,
-    taxTotal: tax,
     paymentMethod,
     amountPaid: paid,
     paymentReference: paymentReference.trim(),
@@ -330,14 +329,15 @@ export function PosPage() {
     customerName: customerName.trim() || "Walk-in Customer",
     customerPhone,
     branch: branches.find((b) => b._id === branchId) || { name: "—" },
-    createdBy: editingSale?.createdBy || { name: "You" },
+    createdBy: editingSale?.createdBy || {
+      name: user?.name || user?.email || "—",
+    },
     items: cart.map((line) => ({
       ...line,
       lineTotal: Math.max(0, line.quantity * line.unitPrice - (line.discount || 0)),
     })),
     subtotal,
     discountTotal: discount,
-    taxTotal: tax,
     grandTotal,
     amountPaid: paid,
     changeDue,
@@ -364,7 +364,6 @@ export function PosPage() {
     setCustomerPhone("");
     setSelectedCustomer(null);
     setDiscountTotal("0");
-    setTaxTotal("0");
     setNotes("");
     setAmountPaid("");
     setIdempotencyKey(makeIdempotencyKey());
@@ -741,17 +740,6 @@ export function PosPage() {
               />
             </label>
             <label className="text-xs text-muted">
-              Tax
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={taxTotal}
-                onChange={(e) => setTaxTotal(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-line px-3 py-2 text-sm"
-              />
-            </label>
-            <label className="text-xs text-muted">
               Payment method
               <select
                 value={paymentMethod}
@@ -772,7 +760,7 @@ export function PosPage() {
                 min="0"
                 step="0.01"
                 value={amountPaid}
-                placeholder={String(grandTotal.toFixed(2))}
+                placeholder="0.00"
                 onChange={(e) => setAmountPaid(e.target.value)}
                 className="mt-1 w-full rounded-xl border border-slate-line px-3 py-2 text-sm"
               />

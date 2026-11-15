@@ -11,7 +11,13 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Package, AlertTriangle, CircleDollarSign } from "lucide-react";
+import {
+  Package,
+  AlertTriangle,
+  CircleDollarSign,
+  Wallet,
+  Banknote,
+} from "lucide-react";
 import { formatCurrency } from "@/shared/lib/format";
 import {
   ChartCard,
@@ -87,31 +93,48 @@ export function InventoryTab({ data }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+        <KpiCard
+          icon={CircleDollarSign}
+          label="Inventory sales"
+          hint="Invoice totals · sale date · net of returns"
+        >
+          <p className="font-display text-3xl text-ink">
+            {formatCurrency(cards.revenue)}
+          </p>
+          <p className="mt-1 text-sm text-muted">
+            Gross {formatCurrency(cards.gross)}
+            {cards.returns > 0
+              ? ` · Returns ${formatCurrency(cards.returns)}`
+              : ""}
+          </p>
+        </KpiCard>
+        <KpiCard
+          icon={Banknote}
+          label="Cash received"
+          hint="Money actually collected from inventory sales"
+        >
+          <p className="font-display text-3xl text-ink">
+            {formatCurrency(cards.collected)}
+          </p>
+        </KpiCard>
+        <KpiCard
+          icon={Wallet}
+          label="Accounts receivable (Udhaar)"
+          hint="Still owed by customers on inventory sales"
+        >
+          <p className="font-display text-3xl text-ink">
+            {formatCurrency(cards.outstanding)}
+          </p>
+        </KpiCard>
         <KpiCard icon={Package} label="Units sold" hint="Net of returns">
           <p className="font-display text-3xl text-ink">
             {Number(cards.unitsSold || 0).toLocaleString("en-PK")}
           </p>
         </KpiCard>
-        <KpiCard icon={CircleDollarSign} label="Revenue" hint="Net of returns · sale date">
-          <p className="font-display text-3xl text-ink">
-            {formatCurrency(cards.revenue)}
-          </p>
-        </KpiCard>
-        <KpiCard label="Gross / returns">
-          <p className="font-display text-2xl text-ink">
-            {formatCurrency(cards.gross)}
-          </p>
-          <p className="mt-1 text-sm text-danger">
-            Returns {formatCurrency(cards.returns)}
-          </p>
-        </KpiCard>
-        <KpiCard label="Receipts">
+        <KpiCard label="Receipts" hint="Completed sales in period">
           <p className="font-display text-3xl text-ink">
             {Number(cards.salesCount || 0).toLocaleString("en-PK")}
-          </p>
-          <p className="mt-1 text-sm text-muted">
-            Collected {formatCurrency(cards.collected)}
           </p>
         </KpiCard>
       </div>
@@ -142,7 +165,7 @@ export function InventoryTab({ data }) {
           )}
         </ChartCard>
 
-        <ChartCard title="By category" subtitle="Line revenue">
+        <ChartCard title="By category" subtitle="Sales after discount">
           {(data.charts?.byCategory || []).length === 0 ? (
             <p className="flex h-full items-center justify-center text-sm text-muted">
               No category breakdown.

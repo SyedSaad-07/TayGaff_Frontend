@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { bookingApi } from "@/features/bookings/api";
-import { TailoringSlip } from "@/features/bookings/TailoringSlip";
+import { CustomerSlip } from "@/features/bookings/CustomerSlip";
+import { WorkshopSlip } from "@/features/bookings/WorkshopSlip";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { TENDER_METHODS } from "@/shared/constants";
 import { useBookingStatusCatalog } from "@/features/bookings/useBookingStatuses";
@@ -32,9 +33,13 @@ export function BookingDetailPage() {
   const { optionsFor } = useBookingStatusCatalog();
   const [booking, setBooking] = useState(null);
   const [karigars, setKarigars] = useState([]);
+  const [cutters, setCutters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [slipLineId, setSlipLineId] = useState(null);
+  const [showCustomerSlip, setShowCustomerSlip] = useState(false);
+  const [workshopMode, setWorkshopMode] = useState("full");
+  const [workshopWorkerCode, setWorkshopWorkerCode] = useState("");
+  const [workshopSlip, setWorkshopSlip] = useState(null);
   const [editing, setEditing] = useState(searchParams.get("edit") === "1");
   const [editForm, setEditForm] = useState(null);
   const [payForm, setPayForm] = useState({
@@ -50,12 +55,14 @@ export function BookingDetailPage() {
     setLoading(true);
     setError("");
     try {
-      const [bookingData, karigarList] = await Promise.all([
+      const [bookingData, karigarList, cutterList] = await Promise.all([
         bookingApi.getById(id),
         bookingApi.karigars().catch(() => []),
+        bookingApi.cutters().catch(() => []),
       ]);
       setBooking(bookingData);
       setKarigars(Array.isArray(karigarList) ? karigarList : []);
+      setCutters(Array.isArray(cutterList) ? cutterList : []);
     } catch (err) {
       setError(getErrorMessage(err, "Failed to load booking"));
     } finally {
@@ -81,10 +88,11 @@ export function BookingDetailPage() {
       discountTotal: String(booking.discountTotal ?? 0),
       notes: booking.notes || "",
       lines: (booking.lines || []).map((l) => ({
-        lineId: l._id,
+        lineId: l._id || l.id,
         amount: String(l.amount ?? 0),
         quantity: String(l.quantity ?? 1),
-        karigarCode: l.karigarCode || "",
+        karigarCode: l.karigarCode || l.karigar?.code || "",
+        cutterCode: l.cutterCode || l.cutter?.code || "",
         stitchingInstructions: l.stitchingInstructions || "",
         remarks: l.remarks || "",
       })),
@@ -103,27 +111,53 @@ export function BookingDetailPage() {
     }
   };
 
-  const assignKarigar = async (lineId, karigarCode) => {
+  const assignWorkers = async (lineId, patch) => {
     if (!booking) return;
     setSaving(true);
     setError("");
     try {
       const updated = await bookingApi.update(id, {
-        lines: (booking.lines || []).map((l) => ({
-          lineId: l._id || l.id,
-          amount: Number(l.amount) || 0,
-          quantity: Number(l.quantity) || 1,
-          karigarCode:
-            String(l._id || l.id) === String(lineId)
-              ? karigarCode
-              : l.karigarCode || "",
-          stitchingInstructions: l.stitchingInstructions || "",
-          remarks: l.remarks || "",
-        })),
+        lines: (booking.lines || []).map((l) => {
+          const isTarget = String(l._id || l.id) === String(lineId);
+          return {
+            lineId: l._id || l.id,
+            amount: Number(l.amount) || 0,
+            quantity: Number(l.quantity) || 1,
+            karigarCode: isTarget
+              ? patch.karigarCode !== undefined
+                ? patch.karigarCode
+                : l.karigarCode || l.karigar?.code || ""
+              : l.karigarCode || l.karigar?.code || "",
+            cutterCode: isTarget
+              ? patch.cutterCode !== undefined
+                ? patch.cutterCode
+                : l.cutterCode || l.cutter?.code || ""
+              : l.cutterCode || l.cutter?.code || "",
+            stitchingInstructions: l.stitchingInstructions || "",
+            remarks: l.remarks || "",
+          };
+        }),
       });
       setBooking(updated);
     } catch (err) {
-      setError(getErrorMessage(err, "Could not assign karigar"));
+      setError(getErrorMessage(err, "Could not update assignment"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const loadWorkshopSlip = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const data = await bookingApi.workshopSlip(id, {
+        mode: workshopMode,
+        workerCode: workshopWorkerCode || undefined,
+      });
+      setWorkshopSlip(data);
+      setShowCustomerSlip(false);
+    } catch (err) {
+      setError(getErrorMessage(err, "Could not build workshop slip"));
     } finally {
       setSaving(false);
     }
@@ -169,6 +203,7 @@ export function BookingDetailPage() {
           amount: Number(l.amount) || 0,
           quantity: Number(l.quantity) || 1,
           karigarCode: l.karigarCode,
+          cutterCode: l.cutterCode,
           stitchingInstructions: l.stitchingInstructions,
           remarks: l.remarks,
         })),
@@ -205,8 +240,9 @@ export function BookingDetailPage() {
     );
   }
 
-  const slipLine = (booking.lines || []).find((l) => l._id === slipLineId);
   const canEdit = booking.status !== "Cancelled";
+  const bookedBy =
+    booking.bookedByName || booking.createdBy?.name || "Legacy/Unknown";
 
   return (
     <div className="space-y-6">
@@ -242,6 +278,9 @@ export function BookingDetailPage() {
           <p className="mt-1 text-sm text-muted">
             Code {booking.customerCode} · Booked {safeDate(booking.bookingDate)} ·
             Due {safeDate(booking.deliveryDate)}
+          </p>
+          <p className="mt-1 text-sm text-muted">
+            Booked by <span className="font-medium text-ink">{bookedBy}</span>
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -379,7 +418,7 @@ export function BookingDetailPage() {
                       className="mt-1 w-full rounded-lg border border-slate-line px-2 py-1.5"
                     />
                   </label>
-                  <label className="block text-sm sm:col-span-2">
+                  <label className="block text-sm">
                     <span className="text-muted">Karigar</span>
                     <select
                       value={line.karigarCode}
@@ -407,6 +446,30 @@ export function BookingDetailPage() {
                           {formatKarigarLabel("", line.karigarCode)}
                         </option>
                       ) : null}
+                    </select>
+                  </label>
+                  <label className="block text-sm">
+                    <span className="text-muted">Cutter</span>
+                    <select
+                      value={line.cutterCode}
+                      onChange={(e) =>
+                        setEditForm((f) => {
+                          const lines = [...f.lines];
+                          lines[idx] = {
+                            ...lines[idx],
+                            cutterCode: e.target.value,
+                          };
+                          return { ...f, lines };
+                        })
+                      }
+                      className="mt-1 w-full rounded-lg border border-slate-line px-2 py-1.5"
+                    >
+                      <option value="">Optional</option>
+                      {cutters.map((c) => (
+                        <option key={c._id || c.code} value={c.code}>
+                          {formatKarigarLabel(c.name, c.code)}
+                        </option>
+                      ))}
                     </select>
                   </label>
                 </div>
@@ -466,7 +529,9 @@ export function BookingDetailPage() {
                       value={line.karigarCode || line.karigar?.code || ""}
                       disabled={saving || !canEdit}
                       onChange={(e) =>
-                        void assignKarigar(line._id, e.target.value)
+                        void assignWorkers(line._id || line.id, {
+                          karigarCode: e.target.value,
+                        })
                       }
                       className="rounded-lg border border-slate-line bg-white px-2 py-1.5 text-sm text-ink"
                     >
@@ -492,10 +557,30 @@ export function BookingDetailPage() {
                       ) : null}
                     </select>
                   </label>
+                  <label className="flex items-center gap-1.5 text-xs text-muted">
+                    <span className="whitespace-nowrap">Cutter</span>
+                    <select
+                      value={line.cutterCode || line.cutter?.code || ""}
+                      disabled={saving || !canEdit}
+                      onChange={(e) =>
+                        void assignWorkers(line._id || line.id, {
+                          cutterCode: e.target.value,
+                        })
+                      }
+                      className="rounded-lg border border-slate-line bg-white px-2 py-1.5 text-sm text-ink"
+                    >
+                      <option value="">Unassigned</option>
+                      {cutters.map((c) => (
+                        <option key={c._id || c.code} value={c.code}>
+                          {formatKarigarLabel(c.name, c.code)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <select
                     value={line.status}
                     disabled={saving || booking.status === "Cancelled"}
-                    onChange={(e) => updateStatus(line._id, e.target.value)}
+                    onChange={(e) => updateStatus(line._id || line.id, e.target.value)}
                     className="rounded-lg border border-slate-line px-2 py-1.5 text-sm"
                   >
                     {optionsFor(line.status).map((s) => (
@@ -504,13 +589,6 @@ export function BookingDetailPage() {
                       </option>
                     ))}
                   </select>
-                  <button
-                    type="button"
-                    onClick={() => setSlipLineId(line._id)}
-                    className="rounded-lg bg-brass px-3 py-1.5 text-sm font-semibold text-white"
-                  >
-                    Tailoring slip
-                  </button>
                 </div>
               </div>
               {measureKeys.length ? (
@@ -630,19 +708,89 @@ export function BookingDetailPage() {
         </section>
       </div>
 
-      {slipLine ? (
+      <section className="rounded-2xl border border-slate-line/80 bg-white p-4">
+        <h2 className="font-display text-xl">Print slips</h2>
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setShowCustomerSlip(true);
+              setWorkshopSlip(null);
+            }}
+            className="rounded-xl bg-brass px-4 py-2 text-sm font-semibold text-white"
+          >
+            Print Customer Slip
+          </button>
+          <label className="text-sm">
+            <span className="text-muted">Workshop mode</span>
+            <select
+              value={workshopMode}
+              onChange={(e) => setWorkshopMode(e.target.value)}
+              className="ml-2 rounded-lg border border-slate-line px-2 py-1.5"
+            >
+              <option value="full">Full workshop</option>
+              <option value="karigar">Karigar only</option>
+              <option value="cutter">Cutter only</option>
+            </select>
+          </label>
+          {workshopMode !== "full" ? (
+            <label className="text-sm">
+              <span className="text-muted">Worker code</span>
+              <select
+                value={workshopWorkerCode}
+                onChange={(e) => setWorkshopWorkerCode(e.target.value)}
+                className="ml-2 rounded-lg border border-slate-line px-2 py-1.5"
+              >
+                <option value="">Any assigned</option>
+                {(workshopMode === "karigar" ? karigars : cutters).map((w) => (
+                  <option key={w._id || w.code} value={w.code}>
+                    {formatKarigarLabel(w.name, w.code)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void loadWorkshopSlip()}
+            className="rounded-xl border border-ink bg-ink px-4 py-2 text-sm font-semibold text-white"
+          >
+            Print Workshop Slip
+          </button>
+        </div>
+      </section>
+
+      {showCustomerSlip ? (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-ink/50 p-4">
           <div className="mx-auto max-w-3xl rounded-2xl bg-mist p-4">
             <div className="mb-3 flex justify-end print:hidden">
               <button
                 type="button"
-                onClick={() => setSlipLineId(null)}
+                onClick={() => setShowCustomerSlip(false)}
                 className="rounded-xl border border-slate-line px-3 py-1.5 text-sm"
               >
                 Close
               </button>
             </div>
-            <TailoringSlip booking={booking} line={slipLine} />
+            <CustomerSlip booking={booking} />
+          </div>
+        </div>
+      ) : null}
+
+      {workshopSlip ? (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-ink/50 p-4">
+          <div className="mx-auto max-w-3xl rounded-2xl bg-mist p-4">
+            <div className="mb-3 flex justify-end print:hidden">
+              <button
+                type="button"
+                onClick={() => setWorkshopSlip(null)}
+                className="rounded-xl border border-slate-line px-3 py-1.5 text-sm"
+              >
+                Close
+              </button>
+            </div>
+            <WorkshopSlip slip={workshopSlip} />
           </div>
         </div>
       ) : null}

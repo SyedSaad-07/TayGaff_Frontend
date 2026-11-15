@@ -43,7 +43,7 @@ export const TENDER_METHODS = [
   "Cheque",
   "Card",
   "Bank Transfer",
-  "Other",
+  "Credit",
 ];
 
 export const REFUND_STATUSES = ["Issued", "Pending", "Not Applicable"];
@@ -53,6 +53,8 @@ export const PAYMENT_STATUSES = ["Unpaid", "Partially Paid", "Paid"];
 export const BOOKING_STATUSES = [
   "Booking Confirmed",
   "Measurements Confirmed",
+  "Assigned to Cutter",
+  "Assigned to Karigar",
   "Awaiting Stitching",
   "Received",
   "Fitting / Quality Check",

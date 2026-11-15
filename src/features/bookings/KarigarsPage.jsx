@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Archive, Pencil, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
 import { bookingApi } from "@/features/bookings/api";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
@@ -286,6 +287,7 @@ export function KarigarsPage() {
               <th className="px-3 py-2.5">Code</th>
               <th className="px-3 py-2.5">Name</th>
               <th className="px-3 py-2.5">Phone</th>
+              <th className="px-3 py-2.5">Open</th>
               <th className="px-3 py-2.5">Status</th>
               <th className="px-3 py-2.5 text-right">Actions</th>
             </tr>
@@ -293,13 +295,13 @@ export function KarigarsPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-3 py-8 text-center text-muted">
+                <td colSpan={6} className="px-3 py-8 text-center text-muted">
                   Loading…
                 </td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-3 py-8 text-center text-muted">
+                <td colSpan={6} className="px-3 py-8 text-center text-muted">
                   No karigars found.
                 </td>
               </tr>
@@ -309,6 +311,7 @@ export function KarigarsPage() {
                   <td className="px-3 py-2.5 font-mono text-xs">{item.code}</td>
                   <td className="px-3 py-2.5 font-medium">{item.name}</td>
                   <td className="px-3 py-2.5">{item.phone1 || "—"}</td>
+                  <td className="px-3 py-2.5">{item.openAssignedCount ?? 0}</td>
                   <td className="px-3 py-2.5">
                     {item.isArchived ? (
                       <span className="text-muted">Archived</span>
@@ -318,6 +321,12 @@ export function KarigarsPage() {
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="inline-flex flex-wrap justify-end gap-1">
+                      <Link
+                        to={`/karigars/${item._id || item.id}/items`}
+                        className="rounded-lg border border-slate-line px-2 py-1.5 text-xs font-medium hover:bg-mist"
+                      >
+                        Items
+                      </Link>
                       <button
                         type="button"
                         onClick={() => openRates(item)}
