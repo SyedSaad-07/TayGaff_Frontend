@@ -643,9 +643,13 @@ export function BookingDetailPage() {
             )}
           </ul>
 
-          {booking.balanceDue > 0 && booking.status !== "Cancelled" ? (
+          {booking.status !== "Cancelled" ? (
             <div className="mt-4 space-y-2 border-t border-slate-line pt-4">
               <p className="text-sm font-medium">Record payment</p>
+              <p className="text-xs text-muted">
+                Paying more than balance due stores the surplus as stitching
+                prepaid credit on the customer.
+              </p>
               <div className="grid gap-2 sm:grid-cols-2">
                 <input
                   type="number"

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Search, Plus, Minus, Trash2, ShoppingCart, Link2, Copy } from "lucide-react";
 import { inventoryApi } from "@/features/inventory/api";
 import { salesApi } from "@/features/sales/api";
+import { bookingApi } from "@/features/bookings/api";
 import { ReceiptPreview } from "@/features/sales/ReceiptPreview";
 import { PosCustomerPicker } from "@/features/sales/PosCustomerPicker";
 import { useBranch } from "@/features/branches/BranchContext";
@@ -12,6 +13,10 @@ import { formatStockQty, unitLabel } from "@/features/inventory/inventoryUtils";
 import { TENDER_METHODS } from "@/shared/constants";
 import { getErrorMessage } from "@/shared/api/client";
 import { formatCurrency } from "@/shared/lib/format";
+import {
+  settleOrderPayment,
+  walletForStream,
+} from "@/shared/lib/customerWallet";
 
 function makeIdempotencyKey() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -58,6 +63,7 @@ export function PosPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customerWallet, setCustomerWallet] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [paymentReference, setPaymentReference] = useState("");
   const [amountPaid, setAmountPaid] = useState("");
@@ -294,9 +300,24 @@ export function PosPage() {
   const grandTotal = Math.max(0, subtotal - discount);
   // Empty amount paid means nothing collected — do not assume full payment.
   const paid = amountPaid === "" ? 0 : Number(amountPaid || 0);
-  const appliedPaid = Math.min(paid, grandTotal);
-  const changeDue = Math.max(0, paid - grandTotal);
-  const balanceDue = Math.max(0, grandTotal - appliedPaid);
+  const hasLinkedCustomer = Boolean(
+    selectedCustomer?._id || selectedCustomer?.id
+  );
+  const walletAvailable = hasLinkedCustomer
+    ? walletForStream(customerWallet, "ALL")
+    : 0;
+  const settlement = settleOrderPayment({
+    grandTotal,
+    cashPaid: paid,
+    wallet: walletAvailable,
+  });
+  // Walk-in: cash change. Linked customer: surplus cash becomes prepaid credit.
+  const changeDue = hasLinkedCustomer ? 0 : settlement.newCreditFromCash;
+  const creditToAccount = hasLinkedCustomer
+    ? settlement.newCreditFromCash
+    : 0;
+  const balanceDue = settlement.balanceDue;
+  const appliedPaid = settlement.amountCovered;
   const paymentStatusLabel =
     appliedPaid <= 0
       ? "Unpaid"
@@ -339,10 +360,12 @@ export function PosPage() {
     subtotal,
     discountTotal: discount,
     grandTotal,
-    amountPaid: paid,
+    amountPaid: appliedPaid,
     changeDue,
     balanceDue,
     paymentMethod,
+    creditToAccount,
+    walletApplied: settlement.walletApplied,
   });
 
   const applyCustomer = (customer) => {
@@ -354,9 +377,30 @@ export function PosPage() {
 
   const clearCustomer = () => {
     setSelectedCustomer(null);
+    setCustomerWallet(null);
     setCustomerName("");
     setCustomerPhone("");
   };
+
+  useEffect(() => {
+    const id = selectedCustomer?._id || selectedCustomer?.id;
+    if (!id) {
+      setCustomerWallet(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await bookingApi.getCustomerBalance(id);
+        if (!cancelled) setCustomerWallet(data || null);
+      } catch {
+        if (!cancelled) setCustomerWallet(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCustomer?._id, selectedCustomer?.id]);
 
   const resetForm = () => {
     setCart([]);
@@ -725,6 +769,18 @@ export function PosPage() {
                 if (selectedCustomer) setSelectedCustomer(null);
               }}
             />
+            {hasLinkedCustomer ? (
+              <p className="text-sm text-ink">
+                Wallet available:{" "}
+                <span className="font-semibold">
+                  {formatCurrency(settlement.walletAvailable)}
+                </span>
+                <span className="text-muted">
+                  {" "}
+                  (auto-applied to unpaid balance)
+                </span>
+              </p>
+            ) : null}
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -786,14 +842,49 @@ export function PosPage() {
               <span>Total</span>
               <span>{formatCurrency(grandTotal)}</span>
             </div>
+            {hasLinkedCustomer ? (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-muted">Wallet available</span>
+                  <span>{formatCurrency(settlement.walletAvailable)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted">Cash / tender now</span>
+                  <span>{formatCurrency(settlement.cashApplied)}</span>
+                </div>
+                {settlement.walletApplied > 0 ? (
+                  <div className="flex justify-between">
+                    <span className="text-muted">From wallet</span>
+                    <span>{formatCurrency(settlement.walletApplied)}</span>
+                  </div>
+                ) : null}
+                <div className="flex justify-between font-medium">
+                  <span>Covered on this sale</span>
+                  <span>{formatCurrency(settlement.amountCovered)}</span>
+                </div>
+              </>
+            ) : null}
             <div className="flex justify-between">
               <span className="text-muted">Payment status</span>
               <span className="font-medium">{paymentStatusLabel}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted">Change</span>
-              <span>{formatCurrency(changeDue)}</span>
-            </div>
+            {creditToAccount > 0 ? (
+              <div className="flex justify-between">
+                <span className="text-muted">New credit to wallet</span>
+                <span>{formatCurrency(creditToAccount)}</span>
+              </div>
+            ) : !hasLinkedCustomer ? (
+              <div className="flex justify-between">
+                <span className="text-muted">Change</span>
+                <span>{formatCurrency(changeDue)}</span>
+              </div>
+            ) : null}
+            {hasLinkedCustomer && settlement.walletRemaining > 0 ? (
+              <div className="flex justify-between">
+                <span className="text-muted">Wallet left after</span>
+                <span>{formatCurrency(settlement.walletRemaining)}</span>
+              </div>
+            ) : null}
             {balanceDue > 0 ? (
               <div className="flex justify-between text-danger">
                 <span>Balance due</span>

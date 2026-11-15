@@ -407,7 +407,9 @@ export function CustomerDetailPage() {
             {customer?.address ? ` · ${customer.address}` : ""}
           </p>
           <p className="mt-2 text-sm font-medium text-ink">
-            Outstanding: {formatCurrency(balance)}
+            {balance < 0
+              ? `Credit: ${formatCurrency(Math.abs(balance))}`
+              : `Outstanding: ${formatCurrency(balance)}`}
           </p>
           {customer?.notes ? (
             <p className="mt-2 text-sm text-ink/70">{customer.notes}</p>
@@ -555,27 +557,34 @@ export function CustomerDetailPage() {
         {summary ? (
           <div className="grid gap-2 sm:grid-cols-4">
             <div className="rounded-xl border border-slate-line/60 bg-white/80 px-3 py-2">
-              <p className="text-[11px] uppercase text-muted">Remaining</p>
-              <p className="font-medium">{formatCurrency(summary.remaining)}</p>
-            </div>
-            <div className="rounded-xl border border-slate-line/60 bg-white/80 px-3 py-2">
-              <p className="text-[11px] uppercase text-muted">Garment</p>
+              <p className="text-[11px] uppercase text-muted">
+                {summary.remaining < 0 ? "Credit" : "Remaining"}
+              </p>
               <p className="font-medium">
-                {formatCurrency(summary.byCategory?.GARMENT?.remaining || 0)}
+                {formatCurrency(
+                  summary.remaining < 0
+                    ? Math.abs(summary.remaining)
+                    : summary.remaining
+                )}
               </p>
             </div>
-            <div className="rounded-xl border border-slate-line/60 bg-white/80 px-3 py-2">
-              <p className="text-[11px] uppercase text-muted">Stitching</p>
-              <p className="font-medium">
-                {formatCurrency(summary.byCategory?.STITCHING?.remaining || 0)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-line/60 bg-white/80 px-3 py-2">
-              <p className="text-[11px] uppercase text-muted">General</p>
-              <p className="font-medium">
-                {formatCurrency(summary.byCategory?.GENERAL?.remaining || 0)}
-              </p>
-            </div>
+            {[
+              ["Garment", summary.byCategory?.GARMENT?.remaining || 0],
+              ["Stitching", summary.byCategory?.STITCHING?.remaining || 0],
+              ["General", summary.byCategory?.GENERAL?.remaining || 0],
+            ].map(([label, rem]) => (
+              <div
+                key={label}
+                className="rounded-xl border border-slate-line/60 bg-white/80 px-3 py-2"
+              >
+                <p className="text-[11px] uppercase text-muted">
+                  {rem < 0 ? `${label} credit` : label}
+                </p>
+                <p className="font-medium">
+                  {formatCurrency(rem < 0 ? Math.abs(rem) : rem)}
+                </p>
+              </div>
+            ))}
           </div>
         ) : null}
 
@@ -586,6 +595,10 @@ export function CustomerDetailPage() {
               className="space-y-2 rounded-xl border border-slate-line/70 bg-white/80 p-3"
             >
               <p className="text-sm font-semibold">Add payment</p>
+              <p className="text-xs text-muted">
+                Amount above dues becomes prepaid credit in the selected
+                category (General / Garment / Stitching).
+              </p>
               {payError ? (
                 <p className="text-sm text-danger">{payError}</p>
               ) : null}

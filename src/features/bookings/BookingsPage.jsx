@@ -10,6 +10,10 @@ import { TENDER_METHODS } from "@/shared/constants";
 import { useBookingStatusesInUse } from "@/features/bookings/useBookingStatuses";
 import { getErrorMessage } from "@/shared/api/client";
 import { formatCurrency, formatDate, toInputDate } from "@/shared/lib/format";
+import {
+  settleOrderPayment,
+  walletForStream,
+} from "@/shared/lib/customerWallet";
 
 function safeDate(value) {
   if (!value) return "—";
@@ -94,6 +98,7 @@ export function BookingsPage() {
   const [measureFields, setMeasureFields] = useState([]);
   const [profiles, setProfiles] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customerWallet, setCustomerWallet] = useState(null);
   const [presetApplied, setPresetApplied] = useState(false);
 
   const [form, setForm] = useState({
@@ -251,6 +256,41 @@ export function BookingsPage() {
       }
     })();
   }, [form.customerId, form.lines, activeLineIdx]);
+
+  useEffect(() => {
+    if (!form.customerId) {
+      setCustomerWallet(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await bookingApi.getCustomerBalance(form.customerId);
+        if (!cancelled) setCustomerWallet(data || null);
+      } catch {
+        if (!cancelled) setCustomerWallet(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [form.customerId]);
+
+  const bookingSubtotal = useMemo(
+    () =>
+      form.lines.reduce((s, l) => s + (Number(l.amount) || 0), 0),
+    [form.lines]
+  );
+  const bookingGrandTotal = Math.max(
+    0,
+    bookingSubtotal - (Number(form.discountTotal) || 0)
+  );
+  const bookingWallet = walletForStream(customerWallet, "ALL");
+  const bookingSettlement = settleOrderPayment({
+    grandTotal: bookingGrandTotal,
+    cashPaid: Number(form.amountPaid) || 0,
+    wallet: form.customerId ? bookingWallet : 0,
+  });
 
   const groups = useMemo(() => {
     const map = {};
@@ -559,6 +599,7 @@ export function BookingsPage() {
                 onClick={() => {
                   setShowCreate(false);
                   setSelectedCustomer(null);
+                  setCustomerWallet(null);
                 }}
                 className="rounded-xl border border-slate-line px-3 py-1.5 text-sm"
               >
@@ -573,12 +614,25 @@ export function BookingsPage() {
                   selectedCustomer={selectedCustomer}
                   onChange={(customer) => {
                     setSelectedCustomer(customer);
+                    if (!customer) setCustomerWallet(null);
                     setForm((f) => ({
                       ...f,
                       customerId: customer?._id || "",
                     }));
                   }}
                 />
+                {form.customerId ? (
+                  <p className="mt-2 text-sm text-ink">
+                    Wallet available:{" "}
+                    <span className="font-semibold">
+                      {formatCurrency(bookingWallet)}
+                    </span>
+                    <span className="text-muted">
+                      {" "}
+                      (auto-applied to unpaid balance)
+                    </span>
+                  </p>
+                ) : null}
               </div>
               <label className="block text-sm">
                 <span className="text-muted">Booking date</span>
@@ -825,16 +879,20 @@ export function BookingsPage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="text-muted">Advance paid</span>
+                <span className="text-muted">Advance paid (cash now)</span>
                 <input
                   type="number"
                   min="0"
+                  step="0.01"
                   value={form.amountPaid}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, amountPaid: e.target.value }))
                   }
                   className="mt-1 w-full rounded-xl border border-slate-line px-3 py-2"
                 />
+                <span className="mt-1 block text-[11px] text-muted">
+                  Extra above order total becomes stitching prepaid credit.
+                </span>
               </label>
               <label className="block text-sm">
                 <span className="text-muted">Advance method</span>
@@ -852,6 +910,60 @@ export function BookingsPage() {
                   ))}
                 </select>
               </label>
+            </div>
+
+            <div className="space-y-1 rounded-xl border border-slate-line/70 bg-white/80 px-3 py-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted">Order total</span>
+                <span className="font-semibold">
+                  {formatCurrency(bookingGrandTotal)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Wallet available</span>
+                <span>{formatCurrency(bookingSettlement.walletAvailable)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Cash / advance now</span>
+                <span>{formatCurrency(bookingSettlement.cashApplied)}</span>
+              </div>
+              {bookingSettlement.walletApplied > 0 ? (
+                <div className="flex justify-between">
+                  <span className="text-muted">From wallet</span>
+                  <span>{formatCurrency(bookingSettlement.walletApplied)}</span>
+                </div>
+              ) : null}
+              <div className="flex justify-between font-medium">
+                <span>Covered on this booking</span>
+                <span>{formatCurrency(bookingSettlement.amountCovered)}</span>
+              </div>
+              {bookingSettlement.balanceDue > 0 ? (
+                <div className="flex justify-between text-danger">
+                  <span>Balance due</span>
+                  <span>{formatCurrency(bookingSettlement.balanceDue)}</span>
+                </div>
+              ) : (
+                <div className="flex justify-between">
+                  <span className="text-muted">Balance due</span>
+                  <span>{formatCurrency(0)}</span>
+                </div>
+              )}
+              {bookingSettlement.newCreditFromCash > 0 ? (
+                <div className="flex justify-between">
+                  <span className="text-muted">New credit to wallet</span>
+                  <span>
+                    {formatCurrency(bookingSettlement.newCreditFromCash)}
+                  </span>
+                </div>
+              ) : null}
+              {bookingSettlement.walletRemaining > 0 ? (
+                <div className="flex justify-between">
+                  <span className="text-muted">Wallet left after</span>
+                  <span>
+                    {formatCurrency(bookingSettlement.walletRemaining)}
+                  </span>
+                </div>
+              ) : null}
             </div>
 
             <div className="flex gap-2">

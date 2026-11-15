@@ -654,6 +654,12 @@ export function SalesHistoryPage() {
             {panel === "payment" ? (
               <div className="mb-4 space-y-3 rounded-xl border border-brass/30 bg-brass/5 p-4">
                 <h4 className="font-medium">Add payment</h4>
+                {selected?.customerId ? (
+                  <p className="text-xs text-muted">
+                    Amount above balance due is stored as garment prepaid credit
+                    on the customer.
+                  </p>
+                ) : null}
                 <div className="grid gap-2 sm:grid-cols-2">
                   <label className="text-xs text-muted">
                     Amount

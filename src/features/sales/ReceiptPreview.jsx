@@ -122,7 +122,18 @@ export function ReceiptPreview({ sale, actions }) {
             <span className="text-muted">Paid ({sale.paymentMethod})</span>
             <span>{formatCurrency(sale.amountPaid)}</span>
           </div>
-          {Number(sale.changeDue) > 0 ? (
+          {Number(sale.walletApplied) > 0 ? (
+            <div className="flex justify-between">
+              <span className="text-muted">From wallet</span>
+              <span>{formatCurrency(sale.walletApplied)}</span>
+            </div>
+          ) : null}
+          {Number(sale.creditToAccount) > 0 ? (
+            <div className="flex justify-between">
+              <span className="text-muted">Credit to account</span>
+              <span>{formatCurrency(sale.creditToAccount)}</span>
+            </div>
+          ) : Number(sale.changeDue) > 0 ? (
             <div className="flex justify-between">
               <span className="text-muted">Change</span>
               <span>{formatCurrency(sale.changeDue)}</span>

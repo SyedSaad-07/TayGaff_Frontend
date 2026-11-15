@@ -213,7 +213,15 @@ export function CustomersPage() {
                   <td className="px-3 py-2.5">{c.phone1 || "—"}</td>
                   <td className="px-3 py-2.5">{c.address || "—"}</td>
                   <td className="px-3 py-2.5 text-right font-medium">
-                    {formatCurrency(c.balance || c.outstandingBalance || 0)}
+                    {(() => {
+                      const bal = Number(
+                        c.balance ?? c.outstandingBalance ?? 0
+                      );
+                      if (bal < 0) {
+                        return `Credit ${formatCurrency(Math.abs(bal))}`;
+                      }
+                      return formatCurrency(bal);
+                    })()}
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="inline-flex flex-wrap justify-end gap-1">
