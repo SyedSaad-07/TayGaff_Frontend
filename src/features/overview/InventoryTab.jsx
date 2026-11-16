@@ -93,7 +93,7 @@ export function InventoryTab({ data }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
         <KpiCard
           icon={CircleDollarSign}
           label="Inventory sales"

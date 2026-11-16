@@ -11,6 +11,7 @@ import { AppShell } from "@/shared/components/AppShell";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { OverallDashboardPage } from "@/features/overview/OverallDashboardPage";
 import { ReportsHubPage } from "@/features/reports/ReportsHubPage";
+import { BalanceSheetPage } from "@/features/reports/BalanceSheetPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { AdminImportPage } from "@/features/adminImport/AdminImportPage";
 import { WebsiteMediaPage } from "@/features/websiteMedia/WebsiteMediaPage";
@@ -103,6 +104,14 @@ export function App() {
                 element={
                   <Permit modules={[MODULES.REPORTS]}>
                     <ReportsHubPage />
+                  </Permit>
+                }
+              />
+              <Route
+                path="reports/balance-sheet"
+                element={
+                  <Permit modules={[MODULES.REPORTS]}>
+                    <BalanceSheetPage />
                   </Permit>
                 }
               />

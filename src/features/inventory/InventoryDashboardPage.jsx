@@ -683,7 +683,7 @@ export function InventoryDashboardPage() {
           label: "Capital Invested",
           value: formatCurrency(summary.periodCapitalInvested),
           icon: Landmark,
-          hint: "Cash buys + credit repayments in period",
+          hint: "Cash buys + supplier payments + opening paid (by date)",
         },
       ]
     : [];

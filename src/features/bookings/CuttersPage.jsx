@@ -523,6 +523,7 @@ export function CuttersPage() {
               ) : null}
             </form>
 
+            <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-slate-line text-muted">
                 <tr>
@@ -582,6 +583,7 @@ export function CuttersPage() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       ) : null}

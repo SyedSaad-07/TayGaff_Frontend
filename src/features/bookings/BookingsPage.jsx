@@ -590,10 +590,10 @@ export function BookingsPage() {
       </div>
 
       {showCreate ? (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-ink/45 p-4">
-          <div className="mx-auto max-w-4xl space-y-4 rounded-2xl bg-mist p-5 shadow-xl">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-ink/45 p-2 sm:p-4">
+          <div className="mx-auto max-w-4xl space-y-4 rounded-2xl bg-mist p-3 shadow-xl sm:p-5">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="font-display text-2xl">New booking</h3>
+              <h3 className="font-display text-xl sm:text-2xl">New booking</h3>
               <button
                 type="button"
                 onClick={() => {

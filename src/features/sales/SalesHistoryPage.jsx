@@ -481,7 +481,16 @@ export function SalesHistoryPage() {
                     <p className="text-xs text-muted">{sale.customerPhone || ""}</p>
                   </td>
                   <td className="px-3 py-2.5">{formatCurrency(sale.grandTotal)}</td>
-                  <td className="px-3 py-2.5">{formatCurrency(sale.amountPaid)}</td>
+                  <td className="px-3 py-2.5">
+                    {formatCurrency(sale.amountPaid)}
+                    {Number(sale.creditToAccount || sale.changeDue) > 0 &&
+                    sale.customerId ? (
+                      <p className="text-xs text-brass-deep">
+                        +{formatCurrency(sale.creditToAccount || sale.changeDue)}{" "}
+                        wallet
+                      </p>
+                    ) : null}
+                  </td>
                   <td className="px-3 py-2.5">{formatCurrency(sale.balanceDue)}</td>
                   <td className="px-3 py-2.5">
                     {sale.saleStatus}
@@ -563,8 +572,8 @@ export function SalesHistoryPage() {
       </div>
 
       {selected ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
-          <div className="max-h-[94vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-mist p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-2 sm:items-center sm:p-4">
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-mist p-3 sm:rounded-2xl sm:p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h3 className="font-display text-xl">Sale {selected.receiptNumber}</h3>
               <div className="flex flex-wrap gap-2">
@@ -641,13 +650,23 @@ export function SalesHistoryPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs text-muted">Paid</p>
+                <p className="text-xs text-muted">Applied to bill</p>
                 <p className="font-semibold">{formatCurrency(selected.amountPaid)}</p>
+                {Number(selected.cashReceived) > Number(selected.amountPaid) ? (
+                  <p className="text-xs text-muted">
+                    Cash received {formatCurrency(selected.cashReceived)}
+                  </p>
+                ) : null}
               </div>
               <div>
                 <p className="text-xs text-muted">Balance due</p>
                 <p className="font-semibold">{formatCurrency(selected.balanceDue)}</p>
                 <p className="text-xs text-muted">{selected.paymentStatus}</p>
+                {Number(selected.creditToAccount || 0) > 0 ? (
+                  <p className="text-xs font-medium text-brass-deep">
+                    Extra → wallet {formatCurrency(selected.creditToAccount)}
+                  </p>
+                ) : null}
               </div>
             </div>
 

@@ -43,7 +43,7 @@ export function OverviewTab({ data, stream, compare = true }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-3">
         <KpiCard
           icon={TrendingUp}
           label="Total sales"
@@ -129,7 +129,7 @@ export function OverviewTab({ data, stream, compare = true }) {
         </KpiCard>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
         <KpiCard icon={Package} label="Total items" hint="Active inventory products">
           <p className="font-display text-3xl text-ink">
             {Number(cards.totalItems || 0).toLocaleString()}
@@ -147,7 +147,7 @@ export function OverviewTab({ data, stream, compare = true }) {
         </KpiCard>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <ChartCard
           title="Revenue split"
           subtitle="Inventory vs bookings (selected period)"
@@ -229,7 +229,7 @@ export function OverviewTab({ data, stream, compare = true }) {
         </ChartCard>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {showInv ? (
           <Panel
             title="Top products"

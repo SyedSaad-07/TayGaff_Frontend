@@ -36,7 +36,7 @@ export function PeriodFilter({
       </div>
 
       {period === "custom" ? (
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="grid w-full grid-cols-1 gap-3 sm:flex sm:w-auto sm:flex-wrap sm:items-end">
           <label className="text-xs font-medium text-ink/60">
             From
             <input
@@ -44,7 +44,7 @@ export function PeriodFilter({
               value={startDate}
               max={endDate || toInputDate()}
               onChange={(e) => onStartDateChange(e.target.value)}
-              className="mt-1 block rounded-xl border border-slate-line bg-mist px-3 py-2 text-sm"
+              className="mt-1 block w-full rounded-xl border border-slate-line bg-mist px-3 py-2 text-sm sm:w-auto"
             />
           </label>
           <label className="text-xs font-medium text-ink/60">
@@ -55,10 +55,10 @@ export function PeriodFilter({
               min={startDate}
               max={toInputDate()}
               onChange={(e) => onEndDateChange(e.target.value)}
-              className="mt-1 block rounded-xl border border-slate-line bg-mist px-3 py-2 text-sm"
+              className="mt-1 block w-full rounded-xl border border-slate-line bg-mist px-3 py-2 text-sm sm:w-auto"
             />
           </label>
-          <p className="pb-2 text-xs text-ink/45">e.g. last 6 years</p>
+          <p className="pb-2 text-xs text-ink/45 sm:block">e.g. last 6 years</p>
         </div>
       ) : null}
     </div>

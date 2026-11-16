@@ -312,16 +312,17 @@ export function PosPage() {
     wallet: walletAvailable,
   });
   // Walk-in: cash change. Linked customer: surplus cash becomes prepaid credit.
-  const changeDue = hasLinkedCustomer ? 0 : settlement.newCreditFromCash;
+  const changeDue = settlement.newCreditFromCash;
   const creditToAccount = hasLinkedCustomer
     ? settlement.newCreditFromCash
     : 0;
   const balanceDue = settlement.balanceDue;
-  const appliedPaid = settlement.amountCovered;
+  // Bill coverage from cash only for "applied to bill" on receipt (wallet is separate).
+  const appliedPaid = settlement.cashApplied;
   const paymentStatusLabel =
-    appliedPaid <= 0
+    settlement.amountCovered <= 0
       ? "Unpaid"
-      : appliedPaid + 0.0001 >= grandTotal
+      : settlement.amountCovered + 0.0001 >= grandTotal
         ? "Paid"
         : "Partially Paid";
 
@@ -361,11 +362,17 @@ export function PosPage() {
     discountTotal: discount,
     grandTotal,
     amountPaid: appliedPaid,
-    changeDue,
+    appliedToBill: appliedPaid,
+    changeDue: hasLinkedCustomer ? 0 : changeDue,
     balanceDue,
     paymentMethod,
     creditToAccount,
+    cashReceived: settlement.cash,
+    customerId: hasLinkedCustomer
+      ? selectedCustomer?._id || selectedCustomer?.id
+      : undefined,
     walletApplied: settlement.walletApplied,
+    walletRemaining: settlement.walletRemaining,
   });
 
   const applyCustomer = (customer) => {
@@ -927,7 +934,7 @@ export function PosPage() {
       </div>
 
       {showPreview ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-ink/40 p-2 sm:items-center sm:p-4">
           <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-mist p-4">
             <div className="mb-3 flex justify-between">
               <h3 className="font-display text-xl">Receipt preview</h3>

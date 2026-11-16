@@ -116,9 +116,7 @@ export function OverallDashboardPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brass-deep">
             Business · {scopeLabel}
           </p>
-          <h1 className="mt-1 font-display text-4xl text-ink sm:text-5xl">
-            Dashboard
-          </h1>
+          <h1 className="mt-1 font-display text-ink">Dashboard</h1>
           <p className="mt-2 max-w-2xl text-sm text-ink/55">
             Sales billed, cash received, and udhaar — PKR · Asia/Karachi.
             {compare ? " Growth compares to the previous equal period." : ""}

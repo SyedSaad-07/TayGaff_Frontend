@@ -104,7 +104,7 @@ export function BookingsTab({ data }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
         <KpiCard icon={CalendarClock} label="Bookings" hint="Created in period">
           <p className="font-display text-3xl text-ink">
             {Number(cards.bookingsCount || 0).toLocaleString("en-PK")}

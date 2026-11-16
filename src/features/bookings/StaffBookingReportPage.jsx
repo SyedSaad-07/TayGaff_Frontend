@@ -66,7 +66,7 @@ export function StaffBookingReportPage() {
       {loading ? (
         <p className="text-sm text-muted">Loading…</p>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-slate-line bg-white">
+        <div className="overflow-x-auto rounded-2xl border border-slate-line bg-white">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-slate-line text-xs uppercase text-muted">
               <tr>

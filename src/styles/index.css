@@ -4,17 +4,14 @@
   --font-display: "Playfair Display", Georgia, "Times New Roman", serif;
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
 
-  /* Deep navy — headings, sidebar, primary dark surfaces */
   --color-ink: #1c2b46;
   --color-ink-soft: #243552;
   --color-ink-muted: #334865;
 
-  /* Royal blue — accents, active states, CTAs */
   --color-brass: #3b5bdb;
   --color-brass-deep: #2f4ac0;
   --color-brass-soft: #8da4f2;
 
-  /* Light canvas */
   --color-slate-canvas: #f3f5f9;
   --color-slate-line: #d9e0ec;
   --color-mist: #ffffff;
@@ -51,6 +48,204 @@
   }
 }
 
+/* ─── App shell layout (plain CSS — desktop sidebar from 768px up) ───────── */
+
+.shell {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  align-items: stretch;
+}
+
+.shell-sidebar {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 240px;
+  width: 240px;
+  max-width: 240px;
+  min-height: 100vh;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  overflow: hidden;
+  background: #1c2b46;
+  color: #fff;
+  border-right: 1px solid #334865;
+  z-index: 40;
+  transform: none;
+}
+
+.shell-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 1.25rem 1rem;
+  flex: 0 0 auto;
+}
+
+.shell-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0 0.75rem 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.shell-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.shell-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+}
+
+.shell-sidebar-foot {
+  flex: 0 0 auto;
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.shell-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid rgba(217, 224, 236, 0.9);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.shell-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 1.25rem 1rem 2rem;
+}
+
+.shell-menu-btn,
+.shell-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  padding: 0.6rem;
+  border: 1px solid #d9e0ec;
+  background: #fff;
+  color: #1c2b46;
+  cursor: pointer;
+}
+
+.shell-icon-btn {
+  border-color: transparent;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.shell-scrim {
+  display: none;
+}
+
+.shell-only-mobile {
+  display: none !important;
+}
+
+.shell-branch-label {
+  display: none;
+  text-align: right;
+}
+
+@media (min-width: 640px) {
+  .shell-topbar {
+    padding: 0.75rem 1.25rem;
+  }
+  .shell-content {
+    padding: 1.5rem 1.5rem 2rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .shell-branch-label {
+    display: block;
+  }
+  .shell-topbar {
+    padding: 0.75rem 1.5rem;
+  }
+  .shell-content {
+    padding: 1.75rem 1.75rem 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .shell-topbar {
+    padding: 0.75rem 2rem;
+  }
+  .shell-content {
+    padding: 2rem;
+  }
+}
+
+/*
+ * Phones only (< 480px): off-canvas drawer.
+ * Anything wider (incl. IDE preview / tablets) keeps a permanent sticky sidebar.
+ */
+@media (max-width: 479px) {
+  .shell-only-mobile {
+    display: block !important;
+  }
+
+  .shell-menu-btn.shell-only-mobile {
+    display: inline-flex !important;
+  }
+
+  .shell-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    flex: none;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease-out;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+    z-index: 50;
+  }
+
+  .shell-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .shell-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+  }
+}
+
+@media print {
+  .shell-sidebar,
+  .shell-topbar,
+  .shell-scrim {
+    display: none !important;
+  }
+}
+
 @layer utilities {
   .font-display {
     font-family: var(--font-display);
@@ -70,13 +265,11 @@
   }
 }
 
-/* Screen: print staging node must not affect layout */
 #print-root {
   display: none;
 }
 
 @media print {
-  /* Zero margin so Chromium does not reserve space for URL/date headers. */
   @page {
     margin: 0;
   }
@@ -89,11 +282,6 @@
     background: white !important;
   }
 
-  /*
-    Isolate print output: when is-printing is set, hide the live app (#root)
-    and show only #print-root (a cloned slip/receipt). This avoids blank pages
-    caused by visibility:hidden still reserving layout height.
-  */
   body.is-printing #root {
     display: none !important;
   }

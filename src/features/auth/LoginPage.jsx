@@ -59,7 +59,7 @@ export function LoginPage() {
         </div>
       </section>
 
-      <section className="flex items-center justify-center bg-atelier px-6 py-12">
+      <section className="flex items-center justify-center bg-atelier px-4 py-10 sm:px-6 sm:py-12">
         <form
           onSubmit={onSubmit}
           className="w-full max-w-md animate-[fadeUp_0.55s_ease-out]"

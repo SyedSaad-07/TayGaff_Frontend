@@ -17,6 +17,13 @@ import {
  */
 const REPORTS = [
   {
+    to: "/reports/balance-sheet",
+    title: "Balance sheet",
+    description:
+      "Assets, liabilities, and equity from the double-entry ledger (as of date)",
+    icon: Banknote,
+  },
+  {
     to: "/dashboard",
     title: "Business overview",
     description: "Total sales, returns, items, and suppliers on one screen",

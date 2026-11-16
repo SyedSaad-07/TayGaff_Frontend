@@ -118,27 +118,62 @@ export function ReceiptPreview({ sale, actions }) {
             <span>Total</span>
             <span>{formatCurrency(sale.grandTotal)}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted">Paid ({sale.paymentMethod})</span>
-            <span>{formatCurrency(sale.amountPaid)}</span>
-          </div>
-          {Number(sale.walletApplied) > 0 ? (
-            <div className="flex justify-between">
-              <span className="text-muted">From wallet</span>
-              <span>{formatCurrency(sale.walletApplied)}</span>
-            </div>
-          ) : null}
-          {Number(sale.creditToAccount) > 0 ? (
-            <div className="flex justify-between">
-              <span className="text-muted">Credit to account</span>
-              <span>{formatCurrency(sale.creditToAccount)}</span>
-            </div>
-          ) : Number(sale.changeDue) > 0 ? (
-            <div className="flex justify-between">
-              <span className="text-muted">Change</span>
-              <span>{formatCurrency(sale.changeDue)}</span>
-            </div>
-          ) : null}
+          {(() => {
+            const net = Math.max(
+              0,
+              Number(sale.grandTotal || 0) - Number(sale.returnedTotal || 0)
+            );
+            const applied = Number(
+              sale.appliedToBill ??
+                Math.min(Number(sale.amountPaid || 0), net)
+            );
+            const cashReceived = Number(
+              sale.cashReceived ?? sale.amountPaid ?? 0
+            );
+            const credit = Number(sale.creditToAccount || 0);
+            const walletApplied = Number(sale.walletApplied || 0);
+            return (
+              <>
+                {cashReceived > 0 ? (
+                  <div className="flex justify-between">
+                    <span className="text-muted">Cash received</span>
+                    <span>{formatCurrency(cashReceived)}</span>
+                  </div>
+                ) : null}
+                <div className="flex justify-between">
+                  <span className="text-muted">
+                    Applied to bill ({sale.paymentMethod || "Cash"})
+                  </span>
+                  <span>{formatCurrency(applied)}</span>
+                </div>
+                {walletApplied > 0 ? (
+                  <div className="flex justify-between">
+                    <span className="text-muted">From wallet</span>
+                    <span>{formatCurrency(walletApplied)}</span>
+                  </div>
+                ) : null}
+                {credit > 0 ? (
+                  <div className="flex justify-between font-medium text-ink">
+                    <span>Extra → wallet credit</span>
+                    <span>{formatCurrency(credit)}</span>
+                  </div>
+                ) : Number(sale.changeDue) > 0 && !sale.customerId ? (
+                  <div className="flex justify-between">
+                    <span className="text-muted">Change</span>
+                    <span>{formatCurrency(sale.changeDue)}</span>
+                  </div>
+                ) : null}
+                {sale.walletRemaining != null &&
+                Number(sale.walletRemaining) >= 0 &&
+                sale.customerId ? (
+                  <div className="flex justify-between text-muted">
+                    <span>Wallet after</span>
+                    <span>{formatCurrency(sale.walletRemaining)}</span>
+                  </div>
+                ) : null}
+              </>
+            );
+          })()}
           {Number(sale.balanceDue) > 0 ? (
             <div className="flex justify-between text-danger">
               <span>Balance due</span>

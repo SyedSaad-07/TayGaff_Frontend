@@ -30,8 +30,11 @@ export function BranchSwitcher() {
   }
 
   return (
-    <label className="relative inline-flex min-w-[220px] items-center">
-      <Building2 size={15} className="pointer-events-none absolute left-3 text-brass" />
+    <label className="relative inline-flex w-full min-w-0 items-center">
+      <Building2
+        size={15}
+        className="pointer-events-none absolute left-2.5 text-brass sm:left-3"
+      />
       <select
         value={selectedBranchId || ""}
         onChange={(e) => {
@@ -42,7 +45,7 @@ export function BranchSwitcher() {
           }
           if (value) setSelectedBranchId(value);
         }}
-        className="w-full appearance-none rounded-full border border-brass/35 bg-white py-2.5 pl-9 pr-9 text-sm font-medium text-ink outline-none transition focus:border-brass"
+        className="w-full min-w-0 appearance-none truncate rounded-full border border-brass/35 bg-white py-2 pl-8 pr-8 text-xs font-medium text-ink outline-none transition focus:border-brass sm:py-2.5 sm:pl-9 sm:pr-9 sm:text-sm"
         aria-label="Switch branch"
       >
         <option value={ALL_BRANCHES}>All branches statistics</option>
