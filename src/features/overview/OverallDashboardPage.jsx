@@ -7,7 +7,6 @@ import { OverviewTab } from "@/features/overview/OverviewTab";
 import { InventoryTab } from "@/features/overview/InventoryTab";
 import { BookingsTab } from "@/features/overview/BookingsTab";
 import { useBranch } from "@/features/branches/BranchContext";
-import { ALL_BRANCHES } from "@/features/branches/branchUtils";
 import { getErrorMessage } from "@/shared/api/client";
 import { toInputDate } from "@/shared/lib/format";
 
@@ -25,7 +24,7 @@ const STREAMS = [
 
 export function OverallDashboardPage() {
   const {
-    selectedBranchId,
+    queryBranchId,
     selectedBranch,
     isAllBranches,
     branches,
@@ -54,10 +53,10 @@ export function OverallDashboardPage() {
       period,
       startDate: period === "custom" ? startDate : undefined,
       endDate: period === "custom" ? endDate : undefined,
-      branchId: selectedBranchId || ALL_BRANCHES,
+      branchId: queryBranchId,
       stream,
     };
-  }, [period, startDate, endDate, selectedBranchId, stream]);
+  }, [period, startDate, endDate, queryBranchId, stream]);
 
   const load = useCallback(async () => {
     if (branchesLoading) return;

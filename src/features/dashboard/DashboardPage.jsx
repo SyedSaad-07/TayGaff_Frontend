@@ -7,13 +7,12 @@ import { StatsCards } from "@/features/dashboard/StatsCards";
 import { ExpenseCharts } from "@/features/dashboard/ExpenseCharts";
 import { CategoryBreakdownTable } from "@/features/dashboard/CategoryBreakdownTable";
 import { useBranch } from "@/features/branches/BranchContext";
-import { ALL_BRANCHES } from "@/features/branches/branchUtils";
 import { toInputDate } from "@/shared/lib/format";
 import { EXPENSE_TYPES } from "@/shared/constants";
 import { getErrorMessage } from "@/shared/api/client";
 
 export function DashboardPage() {
-  const { selectedBranchId, selectedBranch, isAllBranches, branches, loading: branchesLoading } =
+  const { queryBranchId, selectedBranch, isAllBranches, branches, loading: branchesLoading } =
     useBranch();
   const [period, setPeriod] = useState("monthly");
   const [expenseType, setExpenseType] = useState("");
@@ -44,7 +43,7 @@ export function DashboardPage() {
         period,
         startDate: period === "custom" ? startDate : undefined,
         endDate: period === "custom" ? endDate : undefined,
-        branchId: selectedBranchId || ALL_BRANCHES,
+        branchId: queryBranchId,
         expenseType: expenseType || undefined,
       });
       setStats(data);
@@ -57,7 +56,7 @@ export function DashboardPage() {
     period,
     startDate,
     endDate,
-    selectedBranchId,
+    queryBranchId,
     expenseType,
     branches.length,
     branchesLoading,

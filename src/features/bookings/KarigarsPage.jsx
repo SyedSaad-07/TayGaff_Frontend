@@ -3,10 +3,12 @@ import { Link } from "react-router-dom";
 import { Archive, Pencil, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
 import { bookingApi } from "@/features/bookings/api";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import { useBranch } from "@/features/branches/BranchContext";
 import { getErrorMessage } from "@/shared/api/client";
 import { formatCurrency } from "@/shared/lib/format";
 
 const emptyKarigar = () => ({
+  branch: "",
   code: "",
   name: "",
   phone1: "",
@@ -18,6 +20,8 @@ const emptyKarigar = () => ({
 const emptyRate = () => ({ itemCode: "", rate: "" });
 
 export function KarigarsPage() {
+  const { branches, queryBranchId, createBranchId, needsCreateBranchPicker } =
+    useBranch();
   const [items, setItems] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const [page, setPage] = useState(1);
@@ -55,6 +59,7 @@ export function KarigarsPage() {
         limit: 30,
         search,
         includeArchived: includeArchived || undefined,
+        branchId: queryBranchId,
       });
       setItems(data.items || []);
       setPagination(data.pagination || { page: 1, totalPages: 1, total: 0 });
@@ -63,7 +68,7 @@ export function KarigarsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, includeArchived]);
+  }, [page, search, includeArchived, queryBranchId]);
 
   useEffect(() => {
     void load();
@@ -82,7 +87,7 @@ export function KarigarsPage() {
 
   const openCreate = () => {
     setEditId(null);
-    setForm(emptyKarigar());
+    setForm({ ...emptyKarigar(), branch: createBranchId });
     setFormError("");
     setPanel("form");
   };
@@ -122,6 +127,10 @@ export function KarigarsPage() {
       setFormError("Name is required");
       return;
     }
+    if (!editId && !form.branch) {
+      setFormError("Select a branch for this karigar");
+      return;
+    }
     setSaving(true);
     setFormError("");
     try {
@@ -132,6 +141,7 @@ export function KarigarsPage() {
         address: form.address.trim(),
         address2: form.address2.trim(),
         ...(form.code.trim() ? { code: form.code.trim() } : {}),
+        ...(!editId && form.branch ? { branch: form.branch } : {}),
       };
       if (editId) await bookingApi.updateKarigar(editId, payload);
       else await bookingApi.createKarigar(payload);
@@ -397,6 +407,27 @@ export function KarigarsPage() {
             </h2>
             {formError ? (
               <p className="rounded-lg bg-danger/5 px-3 py-2 text-sm text-danger">{formError}</p>
+            ) : null}
+            {!editId && needsCreateBranchPicker ? (
+              <label className="block text-sm">
+                <span className="text-muted">Branch</span>
+                <select
+                  required
+                  value={form.branch}
+                  onChange={(e) => setForm((f) => ({ ...f, branch: e.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2"
+                >
+                  <option value="" disabled>
+                    Select branch
+                  </option>
+                  {branches.map((branch) => (
+                    <option key={branch._id} value={branch._id}>
+                      {branch.name}
+                      {branch.code ? ` (${branch.code})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
             ) : null}
             <label className="block text-sm">
               <span className="text-muted">Code (optional)</span>

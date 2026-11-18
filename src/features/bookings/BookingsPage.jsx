@@ -5,7 +5,6 @@ import { bookingApi } from "@/features/bookings/api";
 import { BookingCustomerPicker } from "@/features/bookings/BookingCustomerPicker";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { useBranch } from "@/features/branches/BranchContext";
-import { ALL_BRANCHES } from "@/features/branches/branchUtils";
 import { TENDER_METHODS } from "@/shared/constants";
 import { useBookingStatusesInUse } from "@/features/bookings/useBookingStatuses";
 import { getErrorMessage } from "@/shared/api/client";
@@ -66,16 +65,14 @@ export function BookingsPage() {
   const { statuses: filterStatuses } = useBookingStatusesInUse();
   const {
     branches,
-    selectedBranchId,
-    preferredBranchId,
-    isAllBranches,
+    queryBranchId,
+    createBranchId: contextCreateBranchId,
+    needsCreateBranchPicker,
   } = useBranch();
-  const createBranchId =
-    !isAllBranches && selectedBranchId && selectedBranchId !== ALL_BRANCHES
-      ? selectedBranchId
-      : preferredBranchId && preferredBranchId !== ALL_BRANCHES
-        ? preferredBranchId
-        : branches[0]?._id || branches[0]?.id || "";
+  const [pickedBranchId, setPickedBranchId] = useState("");
+  const createBranchId = needsCreateBranchPicker
+    ? pickedBranchId
+    : contextCreateBranchId;
 
   const [items, setItems] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
@@ -131,6 +128,7 @@ export function BookingsPage() {
         overdue: overdue || undefined,
         customerId: presetCustomerId || undefined,
         createdById: filterCreatedById || undefined,
+        branchId: queryBranchId,
       });
       setItems(data.items || []);
       setPagination(data.pagination || { page: 1, totalPages: 1, total: 0 });
@@ -139,7 +137,15 @@ export function BookingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, status, overdue, presetCustomerId, filterCreatedById]);
+  }, [
+    page,
+    search,
+    status,
+    overdue,
+    presetCustomerId,
+    filterCreatedById,
+    queryBranchId,
+  ]);
 
   useEffect(() => {
     void load();
@@ -349,7 +355,11 @@ export function BookingsPage() {
       return;
     }
     if (!createBranchId) {
-      setError("Select a branch before creating a booking");
+      setError(
+        needsCreateBranchPicker
+          ? "Select a branch for this booking (you are viewing All Branches)"
+          : "Select a branch before creating a booking"
+      );
       return;
     }
     setSaving(true);
@@ -634,6 +644,27 @@ export function BookingsPage() {
                   </p>
                 ) : null}
               </div>
+              {needsCreateBranchPicker ? (
+                <label className="block text-sm sm:col-span-2">
+                  <span className="text-muted">Branch</span>
+                  <select
+                    required
+                    value={pickedBranchId}
+                    onChange={(e) => setPickedBranchId(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2"
+                  >
+                    <option value="" disabled>
+                      Select branch
+                    </option>
+                    {branches.map((branch) => (
+                      <option key={branch._id} value={branch._id}>
+                        {branch.name}
+                        {branch.code ? ` (${branch.code})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
               <label className="block text-sm">
                 <span className="text-muted">Booking date</span>
                 <input

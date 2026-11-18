@@ -2,18 +2,21 @@ import { useCallback, useEffect, useState } from "react";
 import { Eye, EyeOff, Pencil, Plus, UserPlus } from "lucide-react";
 import { usersApi } from "@/features/settings/usersApi";
 import { MODULE_OPTIONS } from "@/features/auth/roles";
+import { branchApi } from "@/features/branches/api";
 import { getErrorMessage } from "@/shared/api/client";
 
 const emptyForm = () => ({
   name: "",
   email: "",
   password: "",
+  branchId: "",
   permissions: [],
   isActive: true,
 });
 
 export function UsersSection() {
   const [users, setUsers] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [panel, setPanel] = useState(null);
@@ -27,7 +30,12 @@ export function UsersSection() {
     setLoading(true);
     setError("");
     try {
-      setUsers(await usersApi.list());
+      const [userList, branchList] = await Promise.all([
+        usersApi.list(),
+        branchApi.list(),
+      ]);
+      setUsers(userList);
+      setBranches(branchList || []);
     } catch (err) {
       setError(getErrorMessage(err, "Failed to load users"));
     } finally {
@@ -41,7 +49,10 @@ export function UsersSection() {
 
   const openCreate = () => {
     setEditId(null);
-    setForm(emptyForm());
+    setForm({
+      ...emptyForm(),
+      branchId: branches[0]?._id || branches[0]?.id || "",
+    });
     setFormError("");
     setShowPassword(false);
     setPanel("create");
@@ -53,6 +64,7 @@ export function UsersSection() {
       name: user.name || "",
       email: user.email || "",
       password: "",
+      branchId: user.branchId || user.branch?._id || user.branch?.id || "",
       permissions: Array.isArray(user.permissions) ? [...user.permissions] : [],
       isActive: user.isActive !== false,
     });
@@ -90,6 +102,10 @@ export function UsersSection() {
       setFormError("Select at least one section");
       return;
     }
+    if (!form.branchId) {
+      setFormError("Select a branch for this staff user");
+      return;
+    }
 
     setSaving(true);
     setFormError("");
@@ -98,6 +114,7 @@ export function UsersSection() {
         const payload = {
           name: form.name.trim(),
           email: form.email.trim(),
+          branchId: form.branchId,
           permissions: form.permissions,
           isActive: form.isActive,
         };
@@ -108,6 +125,7 @@ export function UsersSection() {
           name: form.name.trim(),
           email: form.email.trim(),
           password: form.password,
+          branchId: form.branchId,
           permissions: form.permissions,
           isActive: form.isActive,
         });
@@ -164,6 +182,7 @@ export function UsersSection() {
               <tr className="text-xs uppercase tracking-wide text-muted">
                 <th className="pb-2 pr-3">Name</th>
                 <th className="pb-2 pr-3">Email</th>
+                <th className="pb-2 pr-3">Branch</th>
                 <th className="pb-2 pr-3">Access</th>
                 <th className="pb-2 pr-3">Status</th>
                 <th className="pb-2"> </th>
@@ -174,6 +193,7 @@ export function UsersSection() {
                 <tr key={u._id} className="border-t border-slate-line/60">
                   <td className="py-2.5 pr-3 font-medium">{u.name}</td>
                   <td className="py-2.5 pr-3 text-muted">{u.email}</td>
+                  <td className="py-2.5 pr-3 text-muted">All branches</td>
                   <td className="py-2.5 pr-3">
                     <span className="rounded-lg bg-ink/5 px-2 py-0.5 text-xs font-semibold">
                       Admin · full access
@@ -187,7 +207,7 @@ export function UsersSection() {
               ))}
               {staffUsers.length === 0 ? (
                 <tr className="border-t border-slate-line/60">
-                  <td colSpan={5} className="py-6 text-muted">
+                  <td colSpan={6} className="py-6 text-muted">
                     No staff users yet. Add someone with only the sections they need.
                   </td>
                 </tr>
@@ -203,10 +223,18 @@ export function UsersSection() {
                               MODULE_OPTIONS.find((o) => o.key === k)?.label || k
                           )
                           .join(", ");
+                  const branchLabel =
+                    u.branch?.name ||
+                    branches.find(
+                      (b) =>
+                        (b._id || b.id) === (u.branchId || u.branch?.id)
+                    )?.name ||
+                    "—";
                   return (
                     <tr key={u._id} className="border-t border-slate-line/60">
                       <td className="py-2.5 pr-3 font-medium">{u.name}</td>
                       <td className="py-2.5 pr-3 text-muted">{u.email}</td>
+                      <td className="py-2.5 pr-3 text-ink/80">{branchLabel}</td>
                       <td className="py-2.5 pr-3 text-ink/80">{labels}</td>
                       <td className="py-2.5 pr-3">
                         {u.isActive === false ? (
@@ -269,6 +297,25 @@ export function UsersSection() {
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                 className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2 text-sm"
               />
+            </label>
+            <label className="block text-sm">
+              <span className="text-muted">Branch</span>
+              <select
+                value={form.branchId}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, branchId: e.target.value }))
+                }
+                required
+                className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2 text-sm"
+              >
+                <option value="">Select branch…</option>
+                {branches.map((b) => (
+                  <option key={b._id || b.id} value={b._id || b.id}>
+                    {b.name}
+                    {b.code ? ` (${b.code})` : ""}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="block text-sm">
               <span className="text-muted">

@@ -9,6 +9,7 @@ export function BranchSwitcher() {
     selectedBranch,
     isAllBranches,
     loading,
+    canSelectAllBranches,
     setSelectedBranchId,
     selectAllBranches,
   } = useBranch();
@@ -25,6 +26,19 @@ export function BranchSwitcher() {
     return (
       <div className="rounded-full border border-dashed border-brass/25 bg-white px-3 py-2 text-xs text-muted">
         No branches yet
+      </div>
+    );
+  }
+
+  // Staff: locked display of their home branch only
+  if (!canSelectAllBranches) {
+    return (
+      <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-brass/35 bg-white px-3 py-2 text-xs font-medium text-ink sm:text-sm">
+        <Building2 size={15} className="shrink-0 text-brass" />
+        <span className="truncate">
+          {selectedBranch?.name || "Assigned branch"}
+          {selectedBranch?.code ? ` (${selectedBranch.code})` : ""}
+        </span>
       </div>
     );
   }
@@ -50,7 +64,7 @@ export function BranchSwitcher() {
       >
         <option value={ALL_BRANCHES}>All branches statistics</option>
         {branches.map((branch) => (
-          <option key={branch._id} value={branch._id}>
+          <option key={branch._id || branch.id} value={branch._id || branch.id}>
             {branch.name}
             {branch.code ? ` (${branch.code})` : ""}
           </option>

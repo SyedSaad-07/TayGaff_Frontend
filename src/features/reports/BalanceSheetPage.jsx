@@ -2,8 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Loader2, RefreshCw } from "lucide-react";
 import { reportsApi } from "@/features/reports/api";
-import { useBranch } from "@/features/branches/BranchContext";
-import { ALL_BRANCHES } from "@/features/branches/branchUtils";
 import { getErrorMessage } from "@/shared/api/client";
 import { formatCurrency, toInputDate } from "@/shared/lib/format";
 
@@ -55,15 +53,12 @@ function Section({ title, rows, total, onSelect }) {
 }
 
 export function BalanceSheetPage() {
-  const { selectedBranchId, isAllBranches } = useBranch();
   const [asOfDate, setAsOfDate] = useState(() => toInputDate(new Date()));
   const [sheet, setSheet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [drill, setDrill] = useState(null);
   const [drillLoading, setDrillLoading] = useState(false);
-
-  const branchId = isAllBranches ? ALL_BRANCHES : selectedBranchId;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -72,7 +67,6 @@ export function BalanceSheetPage() {
       await reportsApi.ensureAccounts();
       const data = await reportsApi.getBalanceSheet({
         asOfDate,
-        branchId,
       });
       setSheet(data);
     } catch (err) {
@@ -81,7 +75,7 @@ export function BalanceSheetPage() {
     } finally {
       setLoading(false);
     }
-  }, [asOfDate, branchId]);
+  }, [asOfDate]);
 
   useEffect(() => {
     void load();
@@ -102,7 +96,6 @@ export function BalanceSheetPage() {
     try {
       const data = await reportsApi.getAccountLines(row.accountId, {
         asOfDate,
-        branchId,
         limit: 100,
       });
       setDrill({ account: row, ...data });

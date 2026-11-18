@@ -35,7 +35,6 @@ import {
 } from "@/features/inventory/inventoryUtils";
 import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { useBranch } from "@/features/branches/BranchContext";
-import { ALL_BRANCHES } from "@/features/branches/branchUtils";
 import { useAuth } from "@/features/auth/AuthContext";
 import { isAdmin } from "@/features/auth/roles";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
@@ -93,16 +92,15 @@ export function InventoryDashboardPage() {
   const admin = isAdmin(user);
   const {
     branches,
-    selectedBranchId,
+    queryBranchId,
     selectedBranch,
     isAllBranches,
+    createBranchId,
+    needsCreateBranchPicker,
     loading: branchesLoading,
   } = useBranch();
 
-  const defaultBranchId = useMemo(() => {
-    if (!isAllBranches && selectedBranchId) return selectedBranchId;
-    return branches[0]?._id || "";
-  }, [branches, isAllBranches, selectedBranchId]);
+  const defaultBranchId = createBranchId;
 
   const [period, setPeriod] = useState("monthly");
   const [startDate, setStartDate] = useState(() => {
@@ -202,7 +200,7 @@ export function InventoryDashboardPage() {
     if (branchesLoading) return;
     try {
       const data = await inventoryApi.sources({
-        branchId: selectedBranchId || ALL_BRANCHES,
+        branchId: queryBranchId,
       });
       const items = data.items || [];
       setSourceOptions(items);
@@ -210,7 +208,7 @@ export function InventoryDashboardPage() {
     } catch {
       setSourceOptions([]);
     }
-  }, [selectedBranchId, branchesLoading]);
+  }, [queryBranchId, branchesLoading]);
 
   const loadStats = useCallback(async () => {
     if (branchesLoading) return;
@@ -220,7 +218,7 @@ export function InventoryDashboardPage() {
         period,
         startDate: period === "custom" ? startDate : undefined,
         endDate: period === "custom" ? endDate : undefined,
-        branchId: selectedBranchId || ALL_BRANCHES,
+        branchId: queryBranchId,
         sourceName: sourceFilter || undefined,
       });
       setStats(data);
@@ -233,7 +231,7 @@ export function InventoryDashboardPage() {
     period,
     startDate,
     endDate,
-    selectedBranchId,
+    queryBranchId,
     sourceFilter,
     branchesLoading,
   ]);
@@ -248,7 +246,7 @@ export function InventoryDashboardPage() {
         search: search || undefined,
         status: statusFilter || undefined,
         paymentStatus: paymentFilter || undefined,
-        branchId: selectedBranchId || ALL_BRANCHES,
+        branchId: queryBranchId,
         sourceName: sourceFilter || undefined,
       });
       setItems(result.items || []);
@@ -268,7 +266,7 @@ export function InventoryDashboardPage() {
     statusFilter,
     paymentFilter,
     sourceFilter,
-    selectedBranchId,
+    queryBranchId,
     branchesLoading,
   ]);
 
@@ -291,7 +289,7 @@ export function InventoryDashboardPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [selectedBranchId, sourceFilter]);
+  }, [queryBranchId, sourceFilter]);
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -305,7 +303,7 @@ export function InventoryDashboardPage() {
     const result = await inventoryApi.list({
       page: 1,
       limit: 100,
-      branchId: selectedBranchId || ALL_BRANCHES,
+      branchId: queryBranchId,
       sourceName: sourceFilter || undefined,
     });
     const options = (result.items || []).filter(canSell);
@@ -412,7 +410,11 @@ export function InventoryDashboardPage() {
       return;
     }
     if (!inventoryForm.branch) {
-      setFormError("Please select a branch.");
+      setFormError(
+        needsCreateBranchPicker
+          ? "Select a branch for this purchase (you are viewing All Branches)."
+          : "Please select a branch."
+      );
       return;
     }
     if (!(quantity > 0)) {
@@ -657,7 +659,7 @@ export function InventoryDashboardPage() {
           label: "Stock returns",
           value: formatCurrency(summary.periodReturnValue || 0),
           icon: Undo2,
-          hint: `${formatMeters(summary.periodReturnedLength || 0)} returned · ${
+          hint: `${formatMeters(summary.periodReturnedLength || 0)} returned Â· ${
             summary.periodReturnCount || 0
           } txns`,
         },
@@ -693,7 +695,7 @@ export function InventoryDashboardPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brass-deep">
-            Stock · Cloth ledger
+            Stock Â· Cloth ledger
           </p>
           <h1 className="mt-1 font-display text-4xl text-ink sm:text-5xl">
             Inventory
@@ -701,7 +703,7 @@ export function InventoryDashboardPage() {
           <p className="mt-2 max-w-xl text-sm text-ink/55">
             Track purchases by length, clothing sales, and credit payments for{" "}
             <span className="font-medium text-ink/75">{scopeLabel}</span>
-            {" · "}
+            {" Â· "}
             <span className="font-medium text-ink/75">{sourceLabel}</span>.
           </p>
         </div>
@@ -765,7 +767,7 @@ export function InventoryDashboardPage() {
       ) : null}
 
       {loadingStats && !stats ? (
-        <p className="text-sm text-ink/50">Loading inventory statistics…</p>
+        <p className="text-sm text-ink/50">Loading inventory statisticsâ€¦</p>
       ) : summary ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -923,7 +925,7 @@ export function InventoryDashboardPage() {
                 type="search"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Cloth, source, notes…"
+                placeholder="Cloth, source, notesâ€¦"
                 className="mt-1 block w-48 rounded-xl border border-slate-line bg-mist px-3 py-2 text-sm sm:w-56"
               />
             </label>
@@ -1005,7 +1007,7 @@ export function InventoryDashboardPage() {
                 {loadingList ? (
                   <tr>
                     <td colSpan={13} className="px-4 py-10 text-center text-ink/45">
-                      Loading inventory…
+                      Loading inventoryâ€¦
                     </td>
                   </tr>
                 ) : items.length === 0 ? (
@@ -1024,7 +1026,7 @@ export function InventoryDashboardPage() {
                         ) : null}
                       </td>
                       <td className="px-4 py-3 text-ink/75">
-                        {item.branch?.name || "—"}
+                        {item.branch?.name || "â€”"}
                       </td>
                       <td className="px-4 py-3 text-ink/75">{item.sourceName}</td>
                       <td className="px-4 py-3 text-ink/70">{item.quantity}</td>
@@ -1426,7 +1428,7 @@ export function InventoryDashboardPage() {
                 disabled={saving}
                 className="rounded-xl bg-brass px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brass-deep disabled:opacity-60"
               >
-                {saving ? "Saving…" : "Add inventory"}
+                {saving ? "Savingâ€¦" : "Add inventory"}
               </button>
               <button
                 type="button"
@@ -1647,7 +1649,7 @@ export function InventoryDashboardPage() {
                 disabled={saving}
                 className="rounded-xl bg-brass px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brass-deep disabled:opacity-60"
               >
-                {saving ? "Saving…" : "Save changes"}
+                {saving ? "Savingâ€¦" : "Save changes"}
               </button>
               <button
                 type="button"
@@ -1679,7 +1681,7 @@ export function InventoryDashboardPage() {
                 ) : (
                   saleOptions.map((item) => (
                     <option key={item._id} value={item._id}>
-                      {item.clothType} · {item.sourceName} ({formatMeters(item.availableLength)}{" "}
+                      {item.clothType} Â· {item.sourceName} ({formatMeters(item.availableLength)}{" "}
                       available)
                     </option>
                   ))
@@ -1792,7 +1794,7 @@ export function InventoryDashboardPage() {
                 disabled={saving || saleOptions.length === 0}
                 className="rounded-xl bg-brass px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brass-deep disabled:opacity-60"
               >
-                {saving ? "Saving…" : "Record sale"}
+                {saving ? "Savingâ€¦" : "Record sale"}
               </button>
               <button
                 type="button"
@@ -1808,7 +1810,7 @@ export function InventoryDashboardPage() {
 
       {panel === "payment" && paymentTarget ? (
         <Modal
-          title={`Record Payment · ${paymentTarget.clothType}`}
+          title={`Record Payment Â· ${paymentTarget.clothType}`}
           onClose={closePanel}
         >
           <form onSubmit={onRecordPayment} className="grid gap-4 sm:grid-cols-2">
@@ -1818,7 +1820,7 @@ export function InventoryDashboardPage() {
                 {formatCurrency(paymentTarget.outstandingAmount)}
               </p>
               <p className="mt-1 text-xs text-ink/45">
-                {paymentTarget.sourceName} · {paymentTarget.purchaseType}
+                {paymentTarget.sourceName} Â· {paymentTarget.purchaseType}
               </p>
             </div>
             <label className="text-xs font-medium text-ink/60">
@@ -1876,7 +1878,7 @@ export function InventoryDashboardPage() {
                 disabled={saving}
                 className="rounded-xl bg-brass px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brass-deep disabled:opacity-60"
               >
-                {saving ? "Saving…" : "Record payment"}
+                {saving ? "Savingâ€¦" : "Record payment"}
               </button>
               <button
                 type="button"

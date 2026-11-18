@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Pencil, Trash2 } from "lucide-react";
 import { expenseApi } from "@/features/expenses/api";
 import { useBranch } from "@/features/branches/BranchContext";
-import { ALL_BRANCHES } from "@/features/branches/branchUtils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { getErrorMessage } from "@/shared/api/client";
 import {
@@ -17,16 +16,15 @@ import { EXPENSE_TYPES } from "@/shared/constants";
 export function ExpensesPage() {
   const {
     branches,
-    selectedBranchId,
+    queryBranchId,
+    createBranchId,
+    needsCreateBranchPicker,
     selectedBranch,
     isAllBranches,
     loading: branchesLoading,
   } = useBranch();
 
-  const defaultBranchId = useMemo(() => {
-    if (!isAllBranches && selectedBranchId) return selectedBranchId;
-    return branches[0]?._id || "";
-  }, [branches, isAllBranches, selectedBranchId]);
+  const defaultBranchId = createBranchId;
 
   const [form, setForm] = useState({
     branch: "",
@@ -72,7 +70,7 @@ export function ExpensesPage() {
         page,
         limit: 10,
         expenseType: filterType || undefined,
-        branchId: selectedBranchId || ALL_BRANCHES,
+        branchId: queryBranchId,
       });
       setItems(result.items);
       setTotalPages(result.pagination.totalPages || 1);
@@ -84,14 +82,14 @@ export function ExpensesPage() {
   }, [
     page,
     filterType,
-    selectedBranchId,
+    queryBranchId,
     branches.length,
     branchesLoading,
   ]);
 
   useEffect(() => {
     setPage(1);
-  }, [selectedBranchId]);
+  }, [queryBranchId]);
 
   useEffect(() => {
     void loadExpenses();
@@ -111,7 +109,11 @@ export function ExpensesPage() {
   const onSubmit = async (event) => {
     event.preventDefault();
     if (!form.branch) {
-      setError("Please select a branch");
+      setError(
+        needsCreateBranchPicker
+          ? "Please select a branch for this expense"
+          : "Please select a branch"
+      );
       return;
     }
 

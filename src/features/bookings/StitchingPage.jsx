@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { bookingApi } from "@/features/bookings/api";
 import { useBookingStatusCatalog } from "@/features/bookings/useBookingStatuses";
+import { useBranch } from "@/features/branches/BranchContext";
 import { getErrorMessage } from "@/shared/api/client";
 import { formatDate } from "@/shared/lib/format";
 
@@ -32,6 +33,7 @@ const BOARD_CARDS = [
 
 export function StitchingPage() {
   const { optionsFor } = useBookingStatusCatalog();
+  const { queryBranchId } = useBranch();
   const [board, setBoard] = useState({
     counts: {},
     items: [],
@@ -48,7 +50,7 @@ export function StitchingPage() {
     setLoading(true);
     setError("");
     try {
-      const params = {};
+      const params = { branchId: queryBranchId };
       if (activeCard?.overdue) params.overdue = true;
       else if (activeCard?.delivered) params.delivered = true;
       else if (activeCard?.status) params.status = activeCard.status;
@@ -60,7 +62,7 @@ export function StitchingPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeCard]);
+  }, [activeCard, queryBranchId]);
 
   useEffect(() => {
     void load();

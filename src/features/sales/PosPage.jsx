@@ -7,7 +7,6 @@ import { bookingApi } from "@/features/bookings/api";
 import { ReceiptPreview } from "@/features/sales/ReceiptPreview";
 import { PosCustomerPicker } from "@/features/sales/PosCustomerPicker";
 import { useBranch } from "@/features/branches/BranchContext";
-import { ALL_BRANCHES } from "@/features/branches/branchUtils";
 import { useAuth } from "@/features/auth/AuthContext";
 import { formatStockQty, unitLabel } from "@/features/inventory/inventoryUtils";
 import { TENDER_METHODS } from "@/shared/constants";
@@ -40,19 +39,25 @@ export function PosPage() {
 
   const {
     branches,
-    selectedBranchId,
-    isAllBranches,
+    createBranchId,
+    needsCreateBranchPicker,
     loading: branchesLoading,
   } = useBranch();
 
   const [lockedBranchId, setLockedBranchId] = useState("");
+  const [pickedBranchId, setPickedBranchId] = useState("");
+  // Concrete branch for catalog + checkout. Empty when admin is on All Branches
+  // and has not yet picked one.
   const branchId = useMemo(() => {
     if (lockedBranchId) return lockedBranchId;
-    if (!isAllBranches && selectedBranchId && selectedBranchId !== ALL_BRANCHES) {
-      return selectedBranchId;
-    }
-    return branches[0]?._id || "";
-  }, [branches, isAllBranches, lockedBranchId, selectedBranchId]);
+    if (needsCreateBranchPicker) return pickedBranchId;
+    return createBranchId;
+  }, [createBranchId, lockedBranchId, needsCreateBranchPicker, pickedBranchId]);
+  const showBranchPicker = needsCreateBranchPicker && !lockedBranchId;
+
+  useEffect(() => {
+    if (!needsCreateBranchPicker) setPickedBranchId("");
+  }, [needsCreateBranchPicker]);
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -167,7 +172,12 @@ export function PosPage() {
   }, [editSaleId]);
 
   const loadCatalog = useCallback(async () => {
-    if (branchesLoading || !branchId) return;
+    if (branchesLoading) return;
+    if (!branchId) {
+      setCatalog([]);
+      setLoadingCatalog(false);
+      return;
+    }
     setLoadingCatalog(true);
     setError((prev) => (loadingSale ? prev : ""));
     try {
@@ -426,7 +436,11 @@ export function PosPage() {
 
   const submitSale = async () => {
     if (!branchId) {
-      setError("Select a branch before checkout");
+      setError(
+        showBranchPicker
+          ? "Select a branch for this sale before checkout"
+          : "Select a branch before checkout"
+      );
       return;
     }
     if (!cart.length) {
@@ -557,8 +571,8 @@ export function PosPage() {
             {editingSale
               ? "Update cart, customer, and payment. Stock is restored then re-applied safely."
               : "Garment / cloth POS sales. Link any customer — booking-only, POS-only, or both."}
-            {!editingSale && isAllBranches
-              ? " Using first branch — switch branch for a specific shop."
+            {showBranchPicker && !editingSale
+              ? " You are viewing All Branches — choose the branch for this sale."
               : null}
           </p>
         </div>
@@ -589,6 +603,30 @@ export function PosPage() {
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.9fr]">
         <section className="rounded-2xl border border-slate-line/80 bg-mist/60 p-4">
+          {showBranchPicker ? (
+            <label className="mb-3 block text-xs font-medium text-ink/60">
+              Branch
+              <select
+                required
+                value={pickedBranchId}
+                onChange={(e) => {
+                  setPickedBranchId(e.target.value);
+                  setCart([]);
+                }}
+                className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm"
+              >
+                <option value="" disabled>
+                  Select branch
+                </option>
+                {branches.map((branch) => (
+                  <option key={branch._id} value={branch._id}>
+                    {branch.name}
+                    {branch.code ? ` (${branch.code})` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <div className="relative">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
@@ -602,6 +640,10 @@ export function PosPage() {
           <div className="mt-4 grid max-h-[62vh] gap-2 overflow-y-auto sm:grid-cols-2">
             {loadingCatalog ? (
               <p className="text-sm text-muted">Loading catalog…</p>
+            ) : !branchId ? (
+              <p className="text-sm text-muted">
+                Select a branch to load its catalog.
+              </p>
             ) : catalog.length === 0 ? (
               <p className="text-sm text-muted">No in-stock items for this branch.</p>
             ) : (

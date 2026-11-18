@@ -4,7 +4,6 @@ import { Search, Plus, Link2, Pencil, Banknote, RotateCcw, Trash2 } from "lucide
 import { salesApi } from "@/features/sales/api";
 import { ReceiptPreview } from "@/features/sales/ReceiptPreview";
 import { useBranch } from "@/features/branches/BranchContext";
-import { ALL_BRANCHES } from "@/features/branches/branchUtils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { TENDER_METHODS, REFUND_STATUSES } from "@/shared/constants";
 import { getErrorMessage } from "@/shared/api/client";
@@ -15,7 +14,7 @@ function remainingQty(item) {
 }
 
 export function SalesHistoryPage() {
-  const { selectedBranchId } = useBranch();
+  const { queryBranchId } = useBranch();
   const [items, setItems] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const [page, setPage] = useState(1);
@@ -71,7 +70,7 @@ export function SalesHistoryPage() {
         stream: stream || "ALL",
         startDate: startDate || undefined,
         endDate: endDate || undefined,
-        branchId: selectedBranchId || ALL_BRANCHES,
+        branchId: queryBranchId,
       });
       setItems(data.items || []);
       setPagination(data.pagination || { page: 1, totalPages: 1, total: 0 });
@@ -89,7 +88,7 @@ export function SalesHistoryPage() {
     stream,
     startDate,
     endDate,
-    selectedBranchId,
+    queryBranchId,
   ]);
 
   useEffect(() => {

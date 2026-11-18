@@ -159,7 +159,9 @@ export function AppShell() {
       path.startsWith("/reports") ||
       path.startsWith("/expenses") ||
       path.startsWith("/inventory") ||
-      path.startsWith("/bookings"));
+      path.startsWith("/bookings") ||
+      path.startsWith("/pressman") ||
+      path.startsWith("/accessories"));
 
   const navItems = [
     ...ALL_NAV.filter((item) => hasPermission(user, item.module)),

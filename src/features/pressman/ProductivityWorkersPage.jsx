@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { getErrorMessage } from "@/shared/api/client";
 import { isAdmin } from "@/features/auth/roles";
 import { useAuth } from "@/features/auth/AuthContext";
+import { useBranch } from "@/features/branches/BranchContext";
 import { formatCurrency, formatDate, toInputDate } from "@/shared/lib/format";
 
 /**
@@ -18,13 +19,20 @@ export function ProductivityWorkersPage({ kind }) {
   const api = kind === "accessories" ? accessoriesApi : pressmanApi;
   const title = kind === "accessories" ? "Accessories" : "Pressman";
   const detailBase = kind === "accessories" ? "/accessories" : "/pressmen";
+  const { branches, queryBranchId, createBranchId, needsCreateBranchPicker } =
+    useBranch();
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [panel, setPanel] = useState(null);
   const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState({ name: "", phone: "", isActive: true });
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    isActive: true,
+    branch: "",
+  });
   const [saving, setSaving] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
@@ -33,14 +41,17 @@ export function ProductivityWorkersPage({ kind }) {
     setLoading(true);
     setError("");
     try {
-      const list = await api.list({ includeInactive: true });
+      const list = await api.list({
+        includeInactive: true,
+        branchId: queryBranchId,
+      });
       setItems(Array.isArray(list) ? list : []);
     } catch (err) {
       setError(getErrorMessage(err, `Failed to load ${title}`));
     } finally {
       setLoading(false);
     }
-  }, [api, title]);
+  }, [api, title, queryBranchId]);
 
   useEffect(() => {
     void load();
@@ -51,10 +62,19 @@ export function ProductivityWorkersPage({ kind }) {
       setError("Name is required");
       return;
     }
+    if (!editId && !form.branch) {
+      setError("Select a branch");
+      return;
+    }
     setSaving(true);
+    setError("");
     try {
-      if (editId) await api.update(editId, form);
-      else await api.create(form);
+      if (editId) {
+        const { branch: _branch, ...updatePayload } = form;
+        await api.update(editId, updatePayload);
+      } else {
+        await api.create({ ...form, branch: form.branch });
+      }
       setPanel(null);
       await load();
     } catch (err) {
@@ -77,7 +97,12 @@ export function ProductivityWorkersPage({ kind }) {
           type="button"
           onClick={() => {
             setEditId(null);
-            setForm({ name: "", phone: "", isActive: true });
+            setForm({
+              name: "",
+              phone: "",
+              isActive: true,
+              branch: createBranchId,
+            });
             setPanel("form");
           }}
           className="inline-flex items-center gap-1 rounded-xl bg-brass px-4 py-2 text-sm font-semibold text-white"
@@ -131,6 +156,7 @@ export function ProductivityWorkersPage({ kind }) {
                               name: item.name || "",
                               phone: item.phone || "",
                               isActive: item.isActive !== false,
+                              branch: item.branchId || item.branch?._id || "",
                             });
                             setPanel("form");
                           }}
@@ -166,6 +192,27 @@ export function ProductivityWorkersPage({ kind }) {
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/40 p-4">
           <div className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5">
             <h2 className="font-display text-2xl">{editId ? "Edit" : "Add"}</h2>
+            {!editId && needsCreateBranchPicker ? (
+              <label className="block text-sm">
+                <span className="text-muted">Branch</span>
+                <select
+                  required
+                  value={form.branch}
+                  onChange={(e) => setForm((f) => ({ ...f, branch: e.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2"
+                >
+                  <option value="" disabled>
+                    Select branch
+                  </option>
+                  {branches.map((branch) => (
+                    <option key={branch._id} value={branch._id}>
+                      {branch.name}
+                      {branch.code ? ` (${branch.code})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <label className="block text-sm">
               <span className="text-muted">Name</span>
               <input
