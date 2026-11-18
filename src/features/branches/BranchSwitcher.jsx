@@ -24,8 +24,8 @@ export function BranchSwitcher() {
 
   if (!branches.length) {
     return (
-      <div className="rounded-full border border-dashed border-brass/25 bg-white px-3 py-2 text-xs text-muted">
-        No branches yet
+      <div className="rounded-full border border-dashed border-brass/40 bg-brass/10 px-3 py-2 text-xs font-medium text-brass-deep">
+        Create a branch first
       </div>
     );
   }

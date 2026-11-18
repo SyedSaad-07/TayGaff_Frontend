@@ -30,6 +30,7 @@ import {
 } from "@/features/auth/roles";
 import { useBranch } from "@/features/branches/BranchContext";
 import { BranchSwitcher } from "@/features/branches/BranchSwitcher";
+import { RequireBranchGate } from "@/features/branches/RequireBranchGate";
 import { BrandLogo } from "@/shared/components/BrandLogo";
 
 const navActive = "bg-brass/20 text-white";
@@ -294,7 +295,9 @@ export function AppShell() {
         </header>
 
         <main className="shell-content">
-          <Outlet />
+          <RequireBranchGate>
+            <Outlet />
+          </RequireBranchGate>
         </main>
       </div>
     </div>

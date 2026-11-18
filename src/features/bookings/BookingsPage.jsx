@@ -821,7 +821,7 @@ export function BookingsPage() {
                           })),
                         }));
                       }}
-                      className="rounded-xl border border-slate-line px-3 py-2 text-xs"
+                      className="inline-flex w-full items-center justify-center rounded-xl border border-slate-line bg-white px-3 py-2.5 text-sm font-medium text-ink shadow-sm transition hover:bg-mist active:bg-mist/80"
                     >
                       Apply workers to all items
                     </button>

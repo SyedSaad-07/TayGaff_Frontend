@@ -10,6 +10,7 @@ import {
   Database,
 } from "lucide-react";
 import { adminImportApi } from "@/features/adminImport/api";
+import { useBranch } from "@/features/branches/BranchContext";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { getErrorMessage } from "@/shared/api/client";
 
@@ -63,6 +64,15 @@ function statusLabel(status) {
 }
 
 export function AdminImportPage() {
+  const {
+    branches,
+    createBranchId,
+    needsCreateBranchPicker,
+  } = useBranch();
+  const [pickedBranchId, setPickedBranchId] = useState("");
+  const importBranchId = needsCreateBranchPicker
+    ? pickedBranchId
+    : createBranchId;
   const [policy, setPolicy] = useState(null);
   const [job, setJob] = useState(null);
   const [file, setFile] = useState(null);
@@ -93,6 +103,14 @@ export function AdminImportPage() {
   }, []);
 
   const onUpload = async () => {
+    if (!branches.length) {
+      setError("Create a branch first under Branches, then return here to import.");
+      return;
+    }
+    if (!importBranchId) {
+      setError("Select which branch should receive the legacy import.");
+      return;
+    }
     if (!file) {
       setError("Choose a Booking.zip file first");
       return;
@@ -111,10 +129,16 @@ export function AdminImportPage() {
 
   const onDryRun = async () => {
     if (!job?.id) return;
+    if (!importBranchId) {
+      setError("Select which branch should receive the legacy import.");
+      return;
+    }
     setBusy("dry-run");
     setError("");
     try {
-      const next = await adminImportApi.dryRun(job.id);
+      const next = await adminImportApi.dryRun(job.id, {
+        branchId: importBranchId,
+      });
       setJob(next);
     } catch (err) {
       setError(getErrorMessage(err, "Preview failed"));
@@ -132,11 +156,17 @@ export function AdminImportPage() {
 
   const onApply = async () => {
     if (!job?.id) return;
+    if (!importBranchId) {
+      setError("Select which branch should receive the legacy import.");
+      return;
+    }
     setConfirmImport(false);
     setBusy("apply");
     setError("");
     try {
-      const next = await adminImportApi.apply(job.id);
+      const next = await adminImportApi.apply(job.id, {
+        branchId: importBranchId,
+      });
       setJob(next);
     } catch (err) {
       setError(getErrorMessage(err, "Import failed"));
@@ -153,14 +183,17 @@ export function AdminImportPage() {
   };
 
   const validationOk = job?.validation?.ok;
+  const hasBranchTarget = Boolean(importBranchId);
   const canDryRun =
     job &&
     validationOk &&
+    hasBranchTarget &&
     !busy &&
     job.status !== "importing" &&
     job.status !== "dry_running";
   const canApply =
     job &&
+    hasBranchTarget &&
     (job.status === "dry_run" || job.status === "completed") &&
     !busy;
   const previewDone = job?.status === "dry_run" || job?.status === "completed";
@@ -213,6 +246,40 @@ export function AdminImportPage() {
           This imports stitching masters + LEG-* bookings only, and does not
           import customer or supplier balances.
         </p>
+        {!branches.length ? (
+          <p className="rounded-xl border border-brass/40 bg-brass/10 px-4 py-3 text-sm text-ink">
+            Create a shop branch first.{" "}
+            <Link className="font-semibold text-brass-deep underline" to="/branches">
+              Go to Branches
+            </Link>{" "}
+            — legacy bookings and new karigars will land on that branch.
+          </p>
+        ) : (
+          <label className="block text-sm">
+            <span className="text-muted">Import into branch</span>
+            {needsCreateBranchPicker ? (
+              <select
+                value={pickedBranchId}
+                onChange={(e) => setPickedBranchId(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-line bg-white px-3 py-2.5"
+              >
+                <option value="">Select branch</option>
+                {branches.map((branch) => (
+                  <option key={branch._id || branch.id} value={branch._id || branch.id}>
+                    {branch.name}
+                    {branch.code ? ` (${branch.code})` : ""}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="mt-1 rounded-xl border border-slate-line bg-mist/60 px-3 py-2.5 text-ink">
+                {branches.find(
+                  (b) => (b._id || b.id) === importBranchId
+                )?.name || "Current branch"}
+              </p>
+            )}
+          </label>
+        )}
       </section>
 
       <section className="rounded-2xl border border-slate-line/80 bg-white p-5 space-y-4">
@@ -249,7 +316,7 @@ export function AdminImportPage() {
 
         <button
           type="button"
-          disabled={!file || Boolean(busy)}
+          disabled={!file || !hasBranchTarget || Boolean(busy)}
           onClick={() => void onUpload()}
           className="inline-flex items-center gap-2 rounded-xl bg-brass px-4 py-2.5 text-sm font-semibold text-white hover:bg-brass-deep disabled:opacity-50"
         >
@@ -369,7 +436,7 @@ export function AdminImportPage() {
       <ConfirmDialog
         open={confirmImport}
         title="Import Booking pack?"
-        message="This writes customers, items, karigars, measures, and LEG-* bookings. Money stays zero and every imported booking is status Delivered. Continue?"
+        message="This writes customers, items, karigars, measures, and LEG-* bookings into the selected branch. Money stays zero and every imported booking is status Delivered. Continue?"
         confirmLabel="Import now"
         tone="warning"
         busy={busy === "apply"}

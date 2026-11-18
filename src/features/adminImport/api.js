@@ -15,11 +15,11 @@ export const adminImportApi = {
     return api.postForm("/admin/import/jobs", form);
   },
 
-  dryRun(id) {
-    return api.post(`/admin/import/jobs/${id}/dry-run`, {});
+  dryRun(id, { branchId } = {}) {
+    return api.post(`/admin/import/jobs/${id}/dry-run`, { branchId });
   },
 
-  apply(id) {
-    return api.post(`/admin/import/jobs/${id}/apply`, {});
+  apply(id, { branchId } = {}) {
+    return api.post(`/admin/import/jobs/${id}/apply`, { branchId });
   },
 };

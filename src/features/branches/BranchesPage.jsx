@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Pencil, Trash2 } from "lucide-react";
 import { branchApi } from "@/features/branches/api";
 import { useBranch } from "@/features/branches/BranchContext";
@@ -12,6 +13,7 @@ const emptyForm = {
 };
 
 export function BranchesPage() {
+  const location = useLocation();
   const { branches, refreshBranches, setSelectedBranchId } = useBranch();
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
@@ -19,6 +21,8 @@ export function BranchesPage() {
   const [error, setError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const setupRequired =
+    Boolean(location.state?.setupRequired) || branches.length === 0;
 
   const resetForm = () => {
     setForm(emptyForm);
@@ -90,9 +94,21 @@ export function BranchesPage() {
           Branches
         </h1>
         <p className="mt-2 text-sm text-ink/55">
-          Create shop branches so expenses stay tied to the right location.
+          Create shop branches so expenses, bookings, POS, and imports stay tied
+          to the right location.
         </p>
       </div>
+
+      {setupRequired ? (
+        <div className="rounded-2xl border border-brass/40 bg-brass/10 px-4 py-4 text-sm text-ink">
+          <p className="font-semibold text-brass-deep">Create a branch first</p>
+          <p className="mt-1 text-ink/70">
+            An empty platform cannot run bookings, POS, expenses, or legacy
+            import until at least one shop branch exists. Add your main shop
+            below, then continue.
+          </p>
+        </div>
+      ) : null}
 
       <form
         onSubmit={onSubmit}
