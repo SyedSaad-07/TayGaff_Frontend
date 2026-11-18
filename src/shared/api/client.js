@@ -3,12 +3,31 @@ const API_BASE =
 
 const TOKEN_KEY = "taygaff_token";
 
+/** Reject non-JWT / oversized values before persisting auth state. */
+function isPlausibleJwt(token) {
+  if (typeof token !== "string") return false;
+  const t = token.trim();
+  if (t.length < 20 || t.length > 4096) return false;
+  // JWT: three base64url segments
+  if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(t)) return false;
+  return true;
+}
+
 export const tokenStore = {
   get() {
-    return localStorage.getItem(TOKEN_KEY);
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token && !isPlausibleJwt(token)) {
+      localStorage.removeItem(TOKEN_KEY);
+      return null;
+    }
+    return token;
   },
   set(token) {
-    localStorage.setItem(TOKEN_KEY, token);
+    if (!isPlausibleJwt(token)) {
+      localStorage.removeItem(TOKEN_KEY);
+      return;
+    }
+    localStorage.setItem(TOKEN_KEY, token.trim());
   },
   clear() {
     localStorage.removeItem(TOKEN_KEY);
